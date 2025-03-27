@@ -9,9 +9,9 @@ export default function TestList() {
   return (
     <div className="space-y-4 p-4">
       {/* Horizontal Layout */}
-      <div className="flex flex-row space-x-4">
+      <div className="flex flex-row space-x-6">
         {/* Left Pane - List Component */}
-        <div className="border border-gray-200 rounded-md p-4">
+        <div className="w-3/10 border border-gray-200 rounded-md p-4">
           <h2 className="text-lg font-bold mb-4">Input and List</h2>
           <input
             value={text}
@@ -24,7 +24,7 @@ export default function TestList() {
           </WrapperProfiler>
         </div>
         {/* Right Pane - Profiler View */}
-        <div className="border border-gray-200 rounded-md p-4">
+        <div className="w-7/10 border border-gray-200 rounded-md p-4">
           <h2 className="text-lg font-bold mb-4">Profiler Data</h2>
           <div className="space-y-3">
             <button
@@ -90,14 +90,16 @@ function ProfilerView({
             <thead>
               <tr className="border-b">
                 <th className="text-left py-2">Component</th>
+                <th className="text-left py-2">Phase</th>
                 <th className="text-left py-2">Actual Duration</th>
                 <th className="text-left py-2">Base Duration</th>
               </tr>
             </thead>
             <tbody>
               {profiles.map((profile, idx) => (
-                <tr key={`${profile.id}-${idx}`} className="hover:bg-gray-50">
+                <tr key={`${profile.id}-${idx}`}>
                   <td className="py-1">{profile.id}</td>
+                  <td className="py-1">{profile.phase}</td>
                   <td className="py-1">
                     {formatMilliseconds(profile.actualDuration)}
                   </td>
