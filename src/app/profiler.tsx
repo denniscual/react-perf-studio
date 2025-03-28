@@ -195,6 +195,21 @@ export function ProfilerGraph() {
         </div>
       ) : (
         <>
+          {selectedCommit && (
+            <div className="mt-2 text-sm text-right">
+              <span className="font-medium">Selected commit:</span>{" "}
+              <span className="text-blue-600 dark:text-blue-400">
+                {selectedCommit}
+              </span>
+              <button
+                onClick={() => setSelectedCommit(null)}
+                className="ml-2 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 underline"
+              >
+                Clear selection
+              </button>
+            </div>
+          )}
+
           <div
             style={{ width: "100%", height: 200 }}
             className="border rounded-md p-2"
@@ -233,15 +248,19 @@ export function ProfilerGraph() {
                   animationDuration={300}
                   style={{ fillOpacity: 1 }}
                   activeBar={{ fillOpacity: 0.9 }}
+                  cursor="pointer"
                 >
                   {commits.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
-                      fill={durationStatusColors[entry.status]}
-                      // Highlight the selected commit
+                      fill={
+                        selectedCommit === entry.commitAt
+                          ? "#3b82f6" // blue color when selected
+                          : durationStatusColors[entry.status]
+                      }
                       fillOpacity={selectedCommit === entry.commitAt ? 1 : 0.7}
                       stroke={
-                        selectedCommit === entry.commitAt ? "#000" : "none"
+                        selectedCommit === entry.commitAt ? "#2563eb" : "none"
                       }
                       strokeWidth={selectedCommit === entry.commitAt ? 1 : 0}
                     />
