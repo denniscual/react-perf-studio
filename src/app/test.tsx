@@ -53,7 +53,7 @@ const List = React.memo(function List({ text }: { text: string }) {
   const items: React.ReactNode[] = [];
   for (let i = 0; i < 5; i++) {
     items.push(
-      <Profiler id="SlowItem" key={i}>
+      <Profiler id={`SlowItem-${i}`} key={i}>
         <SlowItem text={text} />
       </Profiler>
     );
