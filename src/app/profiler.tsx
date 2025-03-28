@@ -38,6 +38,43 @@ export const ProfilerControls = React.memo(function ProfilerControls() {
   );
 });
 
+// Define duration status types
+type DurationStatus = "fast" | "good" | "slow" | "slower" | "verySlow";
+
+// Helper function to determine duration status based on thresholds
+const getDurationStatus = (duration: number): DurationStatus => {
+  if (duration <= 10) return "fast"; // 0-10ms
+  if (duration <= 50) return "good"; // 10-50ms
+  if (duration <= 100) return "slow"; // 50-100ms
+  if (duration <= 200) return "slower"; // 100-200ms
+  return "verySlow"; // 200ms+
+};
+
+// Map status to color - renamed from statusColorMap
+const durationStatusColors: Record<DurationStatus, string> = {
+  fast: "#4ade80", // Green
+  good: "#86efac", // Light green
+  slow: "#fde047", // Light yellow
+  slower: "#facc15", // Yellow
+  verySlow: "#ef4444", // Red
+};
+
+// Map status to human-readable label - renamed from statusLabelMap
+const durationStatusLabels: Record<DurationStatus, string> = {
+  fast: "Fast (0-10ms)",
+  good: "Good (10-50ms)",
+  slow: "Slow (50-100ms)",
+  slower: "Slower (100-200ms)",
+  verySlow: "Very Slow (200ms+)",
+};
+
+type CommitData = {
+  name: string;
+  duration: number;
+  commitAt: string;
+  status: DurationStatus;
+};
+
 export function ProfilerGraph() {
   const records = useSyncExternalStore(
     profilerDataStore.subscribe,
@@ -45,54 +82,28 @@ export function ProfilerGraph() {
     profilerDataStore.getSnapshot
   );
 
-  // Helper function to determine color based on duration
-  const getDurationColor = (duration: number): string => {
-    if (duration <= 10) return "#4ade80"; // Green for fastest (0-10ms)
-    if (duration <= 50) return "#86efac"; // Less green for slight faster (10-50ms)
-    if (duration <= 100) return "#fde047"; // Slight yellow for slight slower (50-100ms)
-    if (duration <= 200) return "#facc15"; // Yellow for slower (100-200ms)
-    return "#ef4444"; // Red for the worst (200ms+)
-  };
-
   // Transform Map data into array format for the chart
-  const commits = useMemo(() => {
+  const commits: CommitData[] = useMemo(() => {
     return Array.from(records.entries()).map(([commitTime, profiles]) => {
       // Calculate total duration for this commit
       const totalDuration = profiles.reduce(
         (sum, profile) => sum + profile.actualDuration,
         0
       );
+
+      const status = getDurationStatus(totalDuration);
+
       return {
         name: commitTime,
         duration: totalDuration,
         commitAt: commitTime,
-        color: getDurationColor(totalDuration),
+        status: status,
       };
     });
   }, [records]);
 
   // Check if we have data to display
   const hasCommits = commits.length > 0;
-
-  const CommitBarTooltip = ({
-    active,
-    payload,
-  }: TooltipProps<number, string>) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700 shadow-md rounded-md">
-          <p className="font-medium text-sm text-gray-900 dark:text-gray-100">
-            Committed at: {data.commitAt}
-          </p>
-          <p className="text-sm" style={{ color: data.color }}>
-            Render duration: {formatMilliseconds(data.duration)}
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
 
   return (
     <div className="space-y-4">
@@ -134,12 +145,14 @@ export function ProfilerGraph() {
                 dataKey="duration"
                 name="Render Duration"
                 animationDuration={300}
-                // Remove cursor pointer to avoid hover effect
                 style={{ fillOpacity: 1 }}
-                activeBar={{ fillOpacity: 0.9 }} // Subtle hover effect
+                activeBar={{ fillOpacity: 0.9 }}
               >
                 {commits.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={durationStatusColors[entry.status as DurationStatus]}
+                  />
                 ))}
               </Bar>
             </BarChart>
@@ -147,42 +160,18 @@ export function ProfilerGraph() {
         </div>
       )}
 
-      <div className="mt-2 flex items-center space-x-4 text-xs">
-        <span className="flex items-center">
-          <span
-            className="h-3 w-3 inline-block mr-1 rounded"
-            style={{ backgroundColor: "#4ade80" }}
-          ></span>
-          Fast (0-10ms)
-        </span>
-        <span className="flex items-center">
-          <span
-            className="h-3 w-3 inline-block mr-1 rounded"
-            style={{ backgroundColor: "#86efac" }}
-          ></span>
-          Good (10-50ms)
-        </span>
-        <span className="flex items-center">
-          <span
-            className="h-3 w-3 inline-block mr-1 rounded"
-            style={{ backgroundColor: "#fde047" }}
-          ></span>
-          Slow (50-100ms)
-        </span>
-        <span className="flex items-center">
-          <span
-            className="h-3 w-3 inline-block mr-1 rounded"
-            style={{ backgroundColor: "#facc15" }}
-          ></span>
-          Slower (100-200ms)
-        </span>
-        <span className="flex items-center">
-          <span
-            className="h-3 w-3 inline-block mr-1 rounded"
-            style={{ backgroundColor: "#ef4444" }}
-          ></span>
-          Very Slow (200ms+)
-        </span>
+      <div className="mt-2 flex flex-wrap gap-2 text-xs">
+        {Object.entries(durationStatusLabels).map(([status, label]) => (
+          <span key={status} className="flex items-center">
+            <span
+              className="h-3 w-3 inline-block mr-1 rounded"
+              style={{
+                backgroundColor: durationStatusColors[status as DurationStatus],
+              }}
+            ></span>
+            {label}
+          </span>
+        ))}
       </div>
 
       <div>
@@ -198,6 +187,31 @@ export function ProfilerGraph() {
     </div>
   );
 }
+
+const CommitBarTooltip = ({
+  active,
+  payload,
+}: TooltipProps<number, string>) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload as CommitData;
+    const status = data.status;
+    return (
+      <div className="bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700 shadow-md rounded-md">
+        <p className="font-medium text-sm text-gray-900 dark:text-gray-100">
+          Committed at: {data.commitAt}
+        </p>
+        <p className="text-sm" style={{ color: durationStatusColors[status] }}>
+          Render duration: {formatMilliseconds(data.duration)}
+        </p>
+        <p className="text-xs mt-1 text-gray-500">
+          Status: {durationStatusLabels[status]}
+        </p>
+      </div>
+    );
+  }
+
+  return null;
+};
 
 export function Profiler(props: { id: string; children: React.ReactNode }) {
   return (
