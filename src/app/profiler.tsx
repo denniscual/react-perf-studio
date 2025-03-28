@@ -11,6 +11,12 @@ import {
 } from "recharts";
 import { formatMilliseconds } from "./util";
 
+// TODO:
+// - Add Ranked Components per commit.
+// - Can we group commits under User Interactions like clicks?
+// - are we going to use playwright to simulate the user interactions to generate data?
+// - from our test app, we are going to record the profiler session and then send the data into the server to generate the HTML report.
+
 export const ProfilerControls = React.memo(function ProfilerControls() {
   const [isProfilingStarted, setIsProfilingStarted] = React.useState(false);
 
