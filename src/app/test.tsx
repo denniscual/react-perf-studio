@@ -221,8 +221,25 @@ const List = React.memo(function List({ text }: { text: string }) {
       </WrapperProfiler>
     );
   }
-  return <ul className="space-y-2 my-4">{items}</ul>;
+  return (
+    <div>
+      <ul className="space-y-2 my-4">{items}</ul>
+      {text.includes("y") && (
+        <WrapperProfiler id="SlowComponent">
+          <SlowComponent />
+        </WrapperProfiler>
+      )}
+    </div>
+  );
 });
+
+function SlowComponent() {
+  const startTime = performance.now();
+  while (performance.now() - startTime < 120) {
+    // Do nothing for 1 ms per item to emulate extremely slow code
+  }
+  return <div>Slow Component</div>;
+}
 
 function SlowItem({ text }: { text: string }) {
   const startTime = performance.now();
