@@ -198,6 +198,10 @@ type ComponentStat = {
   status: DurationStatus;
 };
 
+// Future improvement:
+// - Implement a "Rendering At Timeline" feature in Ranked Components section to display
+//   the exact timestamp when each component was rendered during the profiling session.
+//   "Rendered At" will be shown if a Component is selected in the Ranked Components chart.
 export function ProfilerGraph() {
   const records = useSyncExternalStore(
     profilerDataStore.subscribe,
