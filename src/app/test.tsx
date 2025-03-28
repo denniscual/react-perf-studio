@@ -4,7 +4,6 @@ import React from "react";
 export default function TestList() {
   const [text, setText] = React.useState("");
   const deferredText = React.useDeferredValue(text);
-  const [isProfilingStarted, setIsProfilingStarted] = React.useState(false);
 
   return (
     <div className="space-y-4 p-4">
@@ -27,24 +26,7 @@ export default function TestList() {
         <div className="w-7/10 border border-gray-200 rounded-md p-4">
           <h2 className="text-lg font-bold mb-4">Profiler Data</h2>
           <div className="space-y-3">
-            <button
-              onClick={() => {
-                const newState = !isProfilingStarted;
-                setIsProfilingStarted(newState);
-                if (newState) {
-                  profilerDataStore.startProfiling();
-                } else {
-                  profilerDataStore.stopProfiling();
-                }
-              }}
-              className={`px-4 py-2 text-sm font-medium rounded-md focus:outline-none transition-colors ${
-                isProfilingStarted
-                  ? "bg-red-600 text-white hover:bg-red-700"
-                  : "bg-green-600 text-white hover:bg-green-700"
-              }`}
-            >
-              {isProfilingStarted ? "Stop Profiling" : "Start Profiling"}
-            </button>
+            <ProfilerControls profilerDataStore={profilerDataStore} />
             <ProfilerView profilerDataStore={profilerDataStore} />
           </div>
         </div>
@@ -52,6 +34,38 @@ export default function TestList() {
     </div>
   );
 }
+
+// New component for profiler controls
+const ProfilerControls = React.memo(function ProfilerControls({
+  profilerDataStore,
+}: {
+  profilerDataStore: ProfilerDataStore;
+}) {
+  const [isProfilingStarted, setIsProfilingStarted] = React.useState(false);
+
+  const handleToggleProfiling = React.useCallback(() => {
+    const newState = !isProfilingStarted;
+    setIsProfilingStarted(newState);
+    if (newState) {
+      profilerDataStore.startProfiling();
+    } else {
+      profilerDataStore.stopProfiling();
+    }
+  }, [isProfilingStarted, profilerDataStore]);
+
+  return (
+    <button
+      onClick={handleToggleProfiling}
+      className={`px-4 py-2 text-sm font-medium rounded-md focus:outline-none transition-colors ${
+        isProfilingStarted
+          ? "bg-red-600 text-white hover:bg-red-700"
+          : "bg-green-600 text-white hover:bg-green-700"
+      }`}
+    >
+      {isProfilingStarted ? "Stop Profiling" : "Start Profiling"}
+    </button>
+  );
+});
 
 function ProfilerView({
   profilerDataStore,
