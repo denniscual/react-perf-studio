@@ -7,6 +7,7 @@ import {
   YAxis,
   Tooltip,
   TooltipProps,
+  Cell,
 } from "recharts";
 import { formatMilliseconds } from "./util";
 
@@ -44,6 +45,15 @@ export function ProfilerGraph() {
     profilerDataStore.getSnapshot
   );
 
+  // Helper function to determine color based on duration
+  const getDurationColor = (duration: number): string => {
+    if (duration <= 10) return "#4ade80"; // Green for fastest (0-10ms)
+    if (duration <= 50) return "#86efac"; // Less green for slight faster (10-50ms)
+    if (duration <= 100) return "#fde047"; // Slight yellow for slight slower (50-100ms)
+    if (duration <= 200) return "#facc15"; // Yellow for slower (100-200ms)
+    return "#ef4444"; // Red for the worst (200ms+)
+  };
+
   // Transform Map data into array format for the chart
   const commits = useMemo(() => {
     return Array.from(records.entries()).map(([commitTime, profiles]) => {
@@ -56,6 +66,7 @@ export function ProfilerGraph() {
         name: commitTime,
         duration: totalDuration,
         commitAt: commitTime,
+        color: getDurationColor(totalDuration),
       };
     });
   }, [records]);
@@ -74,7 +85,7 @@ export function ProfilerGraph() {
           <p className="font-medium text-sm text-gray-900 dark:text-gray-100">
             Committed at: {data.commitAt}
           </p>
-          <p className="text-sm text-blue-600 dark:text-blue-400">
+          <p className="text-sm" style={{ color: data.color }}>
             Render duration: {formatMilliseconds(data.duration)}
           </p>
         </div>
@@ -121,15 +132,58 @@ export function ProfilerGraph() {
               <Tooltip content={<CommitBarTooltip />} />
               <Bar
                 dataKey="duration"
-                fill="#8884d8"
                 name="Render Duration"
                 animationDuration={300}
-                cursor="pointer"
-              />
+                // Remove cursor pointer to avoid hover effect
+                style={{ fillOpacity: 1 }}
+                activeBar={{ fillOpacity: 0.9 }} // Subtle hover effect
+              >
+                {commits.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
       )}
+
+      <div className="mt-2 flex items-center space-x-4 text-xs">
+        <span className="flex items-center">
+          <span
+            className="h-3 w-3 inline-block mr-1 rounded"
+            style={{ backgroundColor: "#4ade80" }}
+          ></span>
+          Fast (0-10ms)
+        </span>
+        <span className="flex items-center">
+          <span
+            className="h-3 w-3 inline-block mr-1 rounded"
+            style={{ backgroundColor: "#86efac" }}
+          ></span>
+          Good (10-50ms)
+        </span>
+        <span className="flex items-center">
+          <span
+            className="h-3 w-3 inline-block mr-1 rounded"
+            style={{ backgroundColor: "#fde047" }}
+          ></span>
+          Slow (50-100ms)
+        </span>
+        <span className="flex items-center">
+          <span
+            className="h-3 w-3 inline-block mr-1 rounded"
+            style={{ backgroundColor: "#facc15" }}
+          ></span>
+          Slower (100-200ms)
+        </span>
+        <span className="flex items-center">
+          <span
+            className="h-3 w-3 inline-block mr-1 rounded"
+            style={{ backgroundColor: "#ef4444" }}
+          ></span>
+          Very Slow (200ms+)
+        </span>
+      </div>
 
       <div>
         <h3 className="font-medium">Ranked Components</h3>
