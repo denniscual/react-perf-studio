@@ -1,4 +1,4 @@
-import React, { useMemo, useSyncExternalStore } from "react";
+import React, { useMemo, useSyncExternalStore, useRef } from "react";
 import {
   BarChart,
   Bar,
@@ -71,6 +71,7 @@ const durationStatusLabels: Record<DurationStatus, string> = {
 
 export const ProfilerControls = React.memo(function ProfilerControls() {
   const { isProfilingStarted, setIsProfilingStarted } = useProfilerProvider();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleToggleProfiling = React.useCallback(() => {
     const newState = !isProfilingStarted;
@@ -101,8 +102,40 @@ export const ProfilerControls = React.memo(function ProfilerControls() {
     URL.revokeObjectURL(url);
   }, []);
 
+  const handleUploadClick = React.useCallback(() => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  }, []);
+
+  const handleFileChange = React.useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const jsonData = JSON.parse(event.target?.result as string);
+          profilerDataStore.importData(jsonData);
+          // Reset the input so the same file can be uploaded again if needed
+          if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+          }
+        } catch (error) {
+          console.error("Failed to parse profiler data:", error);
+          alert(
+            "Invalid profiler data format. Please select a valid JSON file."
+          );
+        }
+      };
+      reader.readAsText(file);
+    },
+    []
+  );
+
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-wrap gap-2">
       <button
         onClick={handleToggleProfiling}
         className={`px-4 py-2 text-sm font-medium rounded-md focus:outline-none transition-colors ${
@@ -127,6 +160,22 @@ export const ProfilerControls = React.memo(function ProfilerControls() {
       >
         Export Data
       </button>
+
+      <button
+        onClick={handleUploadClick}
+        className="px-4 py-2 text-sm font-medium bg-purple-600 text-white hover:bg-purple-700 rounded-md focus:outline-none transition-colors"
+      >
+        Upload Data
+      </button>
+
+      {/* Hidden file input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept=".json"
+        className="hidden"
+      />
     </div>
   );
 });
@@ -444,6 +493,12 @@ type ProfilerData = {
   formattedCommitTime: string;
 };
 type ProfilerSubscriber = (records: ProfilerRecords) => void;
+type ProfilerExportedData = {
+  commits: {
+    id: string; // This is the commit time.
+    profiles: ProfilerData[];
+  }[];
+};
 
 class ProfilerDataStore {
   records: ProfilerRecords;
@@ -519,14 +574,44 @@ class ProfilerDataStore {
   };
 
   exportData = () => {
-    const data = {
+    const data: ProfilerExportedData = {
       commits: Array.from(this.records.entries()).map(([time, profiles]) => ({
-        time,
-        profiles: profiles.map((p) => ({ ...p })),
+        id: time,
+        profiles,
       })),
     };
 
     return JSON.stringify(data, null, 2);
+  };
+
+  importData = (data: ProfilerExportedData) => {
+    try {
+      if (!data.commits || !Array.isArray(data.commits)) {
+        throw new Error("Invalid data format");
+      }
+
+      // Clear existing records
+      this.records = new Map();
+
+      // Import the data
+      data.commits.forEach((commit) => {
+        if (commit.id && Array.isArray(commit.profiles)) {
+          this.records.set(commit.id, commit.profiles);
+        }
+      });
+
+      console.log(`[Profiler] Imported data with ${this.records.size} commits`);
+
+      // Notify subscribers of the change
+      this.subscribers.forEach((callback) => {
+        callback(this.records);
+      });
+
+      return true;
+    } catch (error) {
+      console.error("[Profiler] Failed to import data:", error);
+      return false;
+    }
   };
 
   subscribe = (callback: ProfilerSubscriber) => {
