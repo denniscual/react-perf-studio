@@ -177,10 +177,6 @@ export function ProfilerGraph() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h3 className="font-medium">React Performance Profiler</h3>
-      </div>
-
       {!hasCommits ? (
         <div className="text-gray-500 italic p-4 border rounded-md">
           No profiling data available yet. Start profiling and interact with
@@ -369,19 +365,15 @@ function CommitBarTooltip({ active, payload }: TooltipProps<number, string>) {
           Committed at: {data.commitAt}
         </p>
         <div className="mt-2 border-t pt-2 dark:border-gray-700">
-          <p
-            className="text-sm"
-            style={{ color: durationStatusColors[status] }}
-          >
-            Slowest duration:{" "}
-            {formatMilliseconds(slowestComponent.actualDuration)}
-          </p>
-          <p className="text-xs text-gray-500">
-            Phase: {slowestComponent.phase}
+          <p className="text-sm">
+            <b className="font-bold">Slowest duration</b>:{" "}
+            <span style={{ color: durationStatusColors[status] }}>
+              {formatMilliseconds(slowestComponent.actualDuration)}
+            </span>
           </p>
         </div>
         <p className="text-xs mt-1 text-gray-500">
-          Status: {durationStatusLabels[status]}
+          <b className="font-bold">Status</b>: {durationStatusLabels[status]}
         </p>
       </div>
     );
@@ -403,18 +395,22 @@ function ComponentTooltip({ active, payload }: TooltipProps<number, string>) {
 
     return (
       <div className="bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700 shadow-md rounded-md">
-        <p className="font-medium text-sm text-gray-900 dark:text-gray-100">
+        <p className="font-bold text-sm text-gray-900 dark:text-gray-100">
           {data.id}
         </p>
         <p className="text-sm">
-          Render duration: {formatMilliseconds(data.actualDuration)}
+          <b className="font-bold">Render duration</b>:{" "}
+          {formatMilliseconds(data.actualDuration)}
         </p>
         <p className="text-sm">
-          Base duration: {formatMilliseconds(data.baseDuration)}
+          <b className="font-bold">Base duration</b>:{" "}
+          {formatMilliseconds(data.baseDuration)}
         </p>
-        <p className="text-sm">Phase: {data.phase}</p>
+        <p className="text-sm">
+          <b className="font-bold">Phase</b>: {data.phase}
+        </p>
         <p className="text-xs mt-1 text-gray-500">
-          Status: {durationStatusLabels[status]}
+          <b className="font-bold">Status</b>: {durationStatusLabels[status]}
         </p>
       </div>
     );
