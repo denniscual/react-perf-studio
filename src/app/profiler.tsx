@@ -111,6 +111,8 @@ export function ProfilerGraph() {
   // Check if we have data to display
   const hasCommits = commits.length > 0;
 
+  const rankedComponents = useMemo(() => {}, []);
+
   return (
     <div className="space-y-4">
       <h3 className="font-medium">Commit Chart</h3>
@@ -165,7 +167,6 @@ export function ProfilerGraph() {
           </ResponsiveContainer>
         </div>
       )}
-
       <div className="mt-2 flex flex-wrap gap-2 text-xs">
         {Object.entries(durationStatusLabels).map(([status, label]) => (
           <span key={status} className="flex items-center">
@@ -179,7 +180,6 @@ export function ProfilerGraph() {
           </span>
         ))}
       </div>
-
       <div>
         <h3 className="font-medium">Ranked Components</h3>
         {!hasCommits ? (
@@ -187,17 +187,14 @@ export function ProfilerGraph() {
             No component data available yet.
           </div>
         ) : (
-          <div>Component ranking will appear here</div>
+          rankedComponents
         )}
       </div>
     </div>
   );
 }
 
-const CommitBarTooltip = ({
-  active,
-  payload,
-}: TooltipProps<number, string>) => {
+function CommitBarTooltip({ active, payload }: TooltipProps<number, string>) {
   if (active && payload && payload.length) {
     const data = payload[0].payload as CommitData;
     const status = data.status;
@@ -217,7 +214,7 @@ const CommitBarTooltip = ({
   }
 
   return null;
-};
+}
 
 export function Profiler(props: { id: string; children: React.ReactNode }) {
   return (
