@@ -1,4 +1,9 @@
-import React, { useMemo, useSyncExternalStore, useRef } from "react";
+import React, {
+  useMemo,
+  useSyncExternalStore,
+  useRef,
+  useCallback,
+} from "react";
 import {
   BarChart,
   Bar,
@@ -249,6 +254,118 @@ export function ProfilerGraph() {
       .sort((a, b) => b.actualDuration - a.actualDuration);
   }, [records, selectedCommit]);
 
+  // Find the current commit index
+  const currentCommitIndex = useMemo(() => {
+    if (!selectedCommit || !hasCommits) return -1;
+    return commits.findIndex((commit) => commit.id === selectedCommit);
+  }, [commits, selectedCommit, hasCommits]);
+
+  // Navigate to previous commit
+  const handlePrevCommit = useCallback(() => {
+    if (currentCommitIndex > 0) {
+      setSelectedCommit(commits[currentCommitIndex - 1].id);
+    }
+  }, [commits, currentCommitIndex]);
+
+  // Navigate to next commit
+  const handleNextCommit = useCallback(() => {
+    if (currentCommitIndex < commits.length - 1) {
+      setSelectedCommit(commits[currentCommitIndex + 1].id);
+    }
+  }, [commits, currentCommitIndex]);
+
+  const commitsNavControl = useMemo(() => {
+    return (
+      <div className="mt-2 flex justify-between items-center flex-wrap gap-2">
+        <div className="flex items-center space-x-2">
+          <>
+            <button
+              onClick={handlePrevCommit}
+              disabled={currentCommitIndex <= 0}
+              className={`p-1 rounded-md ${
+                currentCommitIndex <= 0
+                  ? "text-gray-400 cursor-not-allowed"
+                  : "text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900"
+              }`}
+              aria-label="Previous commit"
+              title="Previous commit"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+
+            <span className="text-xs text-gray-500">
+              Commit {currentCommitIndex + 1} of {commits.length}
+            </span>
+
+            <button
+              onClick={handleNextCommit}
+              disabled={currentCommitIndex >= commits.length - 1}
+              className={`p-1 rounded-md ${
+                currentCommitIndex >= commits.length - 1
+                  ? "text-gray-400 cursor-not-allowed"
+                  : "text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900"
+              }`}
+              aria-label="Next commit"
+              title="Next commit"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+
+            <button
+              onClick={() => setSelectedCommit(null)}
+              className="ml-2 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 underline"
+            >
+              Clear selection
+            </button>
+          </>
+        </div>
+
+        <div className="flex flex-wrap gap-2 text-xs">
+          {Object.entries(durationStatusLabels).map(([status, label]) => (
+            <span key={status} className="flex items-center">
+              <span
+                className="h-3 w-3 inline-block mr-1 rounded"
+                style={{
+                  backgroundColor:
+                    durationStatusColors[status as DurationStatus],
+                }}
+              ></span>
+              {label}
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+  }, [
+    commits.length,
+    currentCommitIndex,
+    handleNextCommit,
+    handlePrevCommit,
+    selectedCommit,
+  ]);
+
   if (!hasCommits || isProfilingStarted) {
     return (
       <div className="text-gray-500 italic p-4 border rounded-md">
@@ -260,19 +377,7 @@ export function ProfilerGraph() {
 
   return (
     <div className="space-y-4">
-      <div className="mt-2 flex flex-row-reverse flex-wrap gap-2 text-xs">
-        {Object.entries(durationStatusLabels).map(([status, label]) => (
-          <span key={status} className="flex items-center">
-            <span
-              className="h-3 w-3 inline-block mr-1 rounded"
-              style={{
-                backgroundColor: durationStatusColors[status as DurationStatus],
-              }}
-            ></span>
-            {label}
-          </span>
-        ))}
-      </div>
+      {commitsNavControl}
       <div
         style={{ width: "100%", height: 200 }}
         className="border rounded-md p-2"
