@@ -1,29 +1,36 @@
 "use client";
 import React from "react";
 import { simulateDelay } from "./util";
-import { Profiler, ProfilerControls, ProfilerGraph } from "./profiler";
+import {
+  Profiler,
+  ProfilerControls,
+  ProfilerGraph,
+  ProfilerProvider,
+} from "./profiler";
 
 export default function TestList() {
   return (
-    <div className="space-y-4 p-4">
-      {/* Horizontal Layout */}
-      <div className="flex flex-row space-x-6">
-        {/* Left Pane - List Component */}
-        <div className="w-3/10 border border-gray-200 rounded-md p-4">
-          <Profiler id="TestComponent">
-            <TestComponent />
-          </Profiler>
-        </div>
-        {/* Right Pane - Profiler View */}
-        <div className="w-7/10 border border-gray-200 rounded-md p-4">
-          <h2 className="text-lg font-bold mb-4">Profiler Data</h2>
-          <div className="space-y-4">
-            <ProfilerControls />
-            <ProfilerGraph />
+    <ProfilerProvider>
+      <div className="space-y-4 p-4">
+        {/* Horizontal Layout */}
+        <div className="flex flex-row space-x-6">
+          {/* Left Pane - List Component */}
+          <div className="w-3/10 border border-gray-200 rounded-md p-4">
+            <Profiler id="TestComponent">
+              <TestComponent />
+            </Profiler>
+          </div>
+          {/* Right Pane - Profiler View */}
+          <div className="w-7/10 border border-gray-200 rounded-md p-4">
+            <h2 className="text-lg font-bold mb-4">Profiler Data</h2>
+            <div className="space-y-4">
+              <ProfilerControls />
+              <ProfilerGraph />
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </ProfilerProvider>
   );
 }
 

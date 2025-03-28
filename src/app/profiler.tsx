@@ -11,6 +11,34 @@ import {
 } from "recharts";
 import { formatMilliseconds } from "./util";
 
+const ProfilerProviderContext = React.createContext<{
+  isProfilingStarted: boolean;
+  setIsProfilingStarted: React.Dispatch<React.SetStateAction<boolean>>;
+} | null>(null);
+
+export function ProfilerProvider(props: React.PropsWithChildren) {
+  const [isProfilingStarted, setIsProfilingStarted] = React.useState(false);
+
+  const value = useMemo(() => {
+    return {
+      isProfilingStarted,
+      setIsProfilingStarted,
+    };
+  }, [isProfilingStarted]);
+
+  return <ProfilerProviderContext value={value} {...props} />;
+}
+
+function useProfilerProvider() {
+  const ctx = React.useContext(ProfilerProviderContext);
+  if (!ctx) {
+    throw new Error(
+      '"useProfilerProvider" must be used within "ProfilerProvider"'
+    );
+  }
+  return ctx;
+}
+
 // Define duration status types
 type DurationStatus = "fast" | "good" | "slow" | "slower" | "verySlow";
 
@@ -42,7 +70,7 @@ const durationStatusLabels: Record<DurationStatus, string> = {
 };
 
 export const ProfilerControls = React.memo(function ProfilerControls() {
-  const [isProfilingStarted, setIsProfilingStarted] = React.useState(false);
+  const { isProfilingStarted, setIsProfilingStarted } = useProfilerProvider();
 
   const handleToggleProfiling = React.useCallback(() => {
     const newState = !isProfilingStarted;
@@ -52,7 +80,7 @@ export const ProfilerControls = React.memo(function ProfilerControls() {
     } else {
       profilerDataStore.stopProfiling();
     }
-  }, [isProfilingStarted]);
+  }, [isProfilingStarted, setIsProfilingStarted]);
 
   const handleResetData = React.useCallback(() => {
     profilerDataStore.clearData();
@@ -126,6 +154,7 @@ export function ProfilerGraph() {
     profilerDataStore.getSnapshot,
     profilerDataStore.getSnapshot
   );
+  const { isProfilingStarted } = useProfilerProvider();
 
   // State to track which commit is selected
   const [selectedCommit, setSelectedCommit] = React.useState<string | null>(
@@ -175,132 +204,127 @@ export function ProfilerGraph() {
       .sort((a, b) => b.actualDuration - a.actualDuration);
   }, [records, selectedCommit]);
 
+  if (!hasCommits || isProfilingStarted) {
+    return (
+      <div className="text-gray-500 italic p-4 border rounded-md">
+        No profiling data available yet. Start profiling and interact with your
+        application to see performance data.
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      {!hasCommits ? (
-        <div className="text-gray-500 italic p-4 border rounded-md">
-          No profiling data available yet. Start profiling and interact with
-          your application to see performance data.
+      {selectedCommit && (
+        <div className="mt-2 text-sm text-right">
+          <span className="font-medium">Selected commit:</span>{" "}
+          <span className="text-blue-600 dark:text-blue-400">
+            {selectedCommit}
+          </span>
+          <button
+            onClick={() => setSelectedCommit(null)}
+            className="ml-2 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 underline"
+          >
+            Clear selection
+          </button>
         </div>
-      ) : (
-        <>
+      )}
+      <div
+        style={{ width: "100%", height: 200 }}
+        className="border rounded-md p-2"
+      >
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={commits}
+            margin={{ top: 10, right: 10, left: 10, bottom: 20 }}
+            onClick={(data) => {
+              if (data.activePayload && data.activePayload.length > 0) {
+                const { id } = data.activePayload[0].payload as CommitData;
+                setSelectedCommit(id);
+              }
+            }}
+          >
+            <XAxis
+              dataKey="name"
+              tick={{ fontSize: 10 }}
+              height={40}
+              interval={0}
+              angle={-45}
+              textAnchor="end"
+              label={{
+                value: "Commit Time",
+              }}
+            />
+            <YAxis
+              label={{
+                value: "Duration (ms)",
+                angle: -90,
+                position: "insideLeft",
+              }}
+              tick={{ fontSize: 10 }}
+            />
+            <Tooltip content={<CommitBarTooltip />} />
+            <Bar
+              dataKey="duration"
+              name="Render Duration"
+              animationDuration={300}
+              style={{ fillOpacity: 1 }}
+              activeBar={{ fillOpacity: 0.9 }}
+              cursor="pointer"
+            >
+              {commits.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={
+                    selectedCommit === entry.id
+                      ? "#3b82f6" // blue color when selected
+                      : durationStatusColors[entry.status]
+                  }
+                  fillOpacity={selectedCommit === entry.commitAt ? 1 : 0.7}
+                  stroke={
+                    selectedCommit === entry.commitAt ? "#2563eb" : "none"
+                  }
+                  strokeWidth={selectedCommit === entry.commitAt ? 1 : 0}
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-2 text-xs">
+        {Object.entries(durationStatusLabels).map(([status, label]) => (
+          <span key={status} className="flex items-center">
+            <span
+              className="h-3 w-3 inline-block mr-1 rounded"
+              style={{
+                backgroundColor: durationStatusColors[status as DurationStatus],
+              }}
+            ></span>
+            {label}
+          </span>
+        ))}
+      </div>
+      <div className="mt-4">
+        <div className="flex justify-between items-center mb-2">
+          <h3 className="font-medium">Ranked Components</h3>
           {selectedCommit && (
-            <div className="mt-2 text-sm text-right">
-              <span className="font-medium">Selected commit:</span>{" "}
-              <span className="text-blue-600 dark:text-blue-400">
-                {selectedCommit}
-              </span>
-              <button
-                onClick={() => setSelectedCommit(null)}
-                className="ml-2 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 underline"
-              >
-                Clear selection
-              </button>
+            <div className="text-sm text-gray-500">
+              For commit at: {selectedCommit}
             </div>
           )}
-
-          <div
-            style={{ width: "100%", height: 200 }}
-            className="border rounded-md p-2"
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={commits}
-                margin={{ top: 10, right: 10, left: 10, bottom: 20 }}
-                onClick={(data) => {
-                  if (data.activePayload && data.activePayload.length > 0) {
-                    const { id } = data.activePayload[0].payload as CommitData;
-                    setSelectedCommit(id);
-                  }
-                }}
-              >
-                <XAxis
-                  dataKey="name"
-                  tick={{ fontSize: 10 }}
-                  height={40}
-                  interval={0}
-                  angle={-45}
-                  textAnchor="end"
-                  label={{
-                    value: "Commit Time",
-                  }}
-                />
-                <YAxis
-                  label={{
-                    value: "Duration (ms)",
-                    angle: -90,
-                    position: "insideLeft",
-                  }}
-                  tick={{ fontSize: 10 }}
-                />
-                <Tooltip content={<CommitBarTooltip />} />
-                <Bar
-                  dataKey="duration"
-                  name="Render Duration"
-                  animationDuration={300}
-                  style={{ fillOpacity: 1 }}
-                  activeBar={{ fillOpacity: 0.9 }}
-                  cursor="pointer"
-                >
-                  {commits.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={
-                        selectedCommit === entry.id
-                          ? "#3b82f6" // blue color when selected
-                          : durationStatusColors[entry.status]
-                      }
-                      fillOpacity={selectedCommit === entry.commitAt ? 1 : 0.7}
-                      stroke={
-                        selectedCommit === entry.commitAt ? "#2563eb" : "none"
-                      }
-                      strokeWidth={selectedCommit === entry.commitAt ? 1 : 0}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+        </div>
+        {!selectedCommit ? (
+          <div className="text-gray-500 italic p-4 border rounded-md">
+            Click on a commit bar above to see its components.
           </div>
-
-          <div className="mt-2 flex flex-wrap gap-2 text-xs">
-            {Object.entries(durationStatusLabels).map(([status, label]) => (
-              <span key={status} className="flex items-center">
-                <span
-                  className="h-3 w-3 inline-block mr-1 rounded"
-                  style={{
-                    backgroundColor:
-                      durationStatusColors[status as DurationStatus],
-                  }}
-                ></span>
-                {label}
-              </span>
-            ))}
+        ) : rankedComponents.length === 0 ? (
+          <div className="text-gray-500 italic">
+            No component data available for this commit.
           </div>
-
-          <div className="mt-4">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="font-medium">Ranked Components</h3>
-              {selectedCommit && (
-                <div className="text-sm text-gray-500">
-                  For commit at: {selectedCommit}
-                </div>
-              )}
-            </div>
-
-            {!selectedCommit ? (
-              <div className="text-gray-500 italic p-4 border rounded-md">
-                Click on a commit bar above to see its components.
-              </div>
-            ) : rankedComponents.length === 0 ? (
-              <div className="text-gray-500 italic">
-                No component data available for this commit.
-              </div>
-            ) : (
-              <RankedComponentsChart data={rankedComponents} />
-            )}
-          </div>
-        </>
-      )}
+        ) : (
+          <RankedComponentsChart data={rankedComponents} />
+        )}
+      </div>
     </div>
   );
 }
