@@ -31,7 +31,7 @@ function TestComponent() {
   const [text, setText] = React.useState("");
   const deferredText = React.useDeferredValue(text);
 
-  simulateDelay(35);
+  simulateDelay(3);
 
   return (
     <div>
@@ -78,7 +78,7 @@ function SlowComponent() {
 
 function SlowItem({ text }: { text: string }) {
   // Use the reusable delay function with default delay
-  simulateDelay();
+  simulateDelay(5);
 
   return (
     <li className="p-2">
