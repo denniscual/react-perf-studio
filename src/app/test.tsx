@@ -96,7 +96,7 @@ function ProfilerGraph() {
 
   return (
     <div className="space-y-4">
-      <h3 className="font-medium">Commit Performance</h3>
+      <h3 className="font-medium">Commit Chart</h3>
 
       {!hasData ? (
         <div className="text-gray-500 italic">
