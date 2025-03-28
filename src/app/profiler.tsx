@@ -1,5 +1,13 @@
 import React, { useMemo, useSyncExternalStore } from "react";
-import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import {
+  BarChart,
+  Bar,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  Tooltip,
+  TooltipProps,
+} from "recharts";
 import { formatMilliseconds } from "./util";
 
 export const ProfilerControls = React.memo(function ProfilerControls() {
@@ -37,7 +45,7 @@ export function ProfilerGraph() {
   );
 
   // Transform Map data into array format for the chart
-  const data = useMemo(() => {
+  const commits = useMemo(() => {
     return Array.from(records.entries()).map(([commitTime, profiles]) => {
       // Calculate total duration for this commit
       const totalDuration = profiles.reduce(
@@ -46,19 +54,40 @@ export function ProfilerGraph() {
       );
       return {
         name: commitTime,
-        duration: totalDuration, // Using a more descriptive key name
+        duration: totalDuration,
+        commitAt: commitTime,
       };
     });
   }, [records]);
 
   // Check if we have data to display
-  const hasData = data.length > 0;
+  const hasCommits = commits.length > 0;
+
+  const CommitBarTooltip = ({
+    active,
+    payload,
+  }: TooltipProps<number, string>) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700 shadow-md rounded-md">
+          <p className="font-medium text-sm text-gray-900 dark:text-gray-100">
+            Committed at: {data.commitAt}
+          </p>
+          <p className="text-sm text-blue-600 dark:text-blue-400">
+            Render duration: {formatMilliseconds(data.duration)}
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <div className="space-y-4">
       <h3 className="font-medium">Commit Chart</h3>
 
-      {!hasData ? (
+      {!hasCommits ? (
         <div className="text-gray-500 italic">
           No chart data available yet. Start profiling and interact with the
           list to see data.
@@ -70,7 +99,7 @@ export function ProfilerGraph() {
         >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
-              data={data}
+              data={commits}
               margin={{ top: 10, right: 10, left: 10, bottom: 20 }}
             >
               <XAxis
@@ -89,7 +118,14 @@ export function ProfilerGraph() {
                 }}
                 tick={{ fontSize: 10 }}
               />
-              <Bar dataKey="duration" fill="#8884d8" name="Render Duration" />
+              <Tooltip content={<CommitBarTooltip />} />
+              <Bar
+                dataKey="duration"
+                fill="#8884d8"
+                name="Render Duration"
+                animationDuration={300}
+                cursor="pointer"
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -97,7 +133,7 @@ export function ProfilerGraph() {
 
       <div>
         <h3 className="font-medium">Ranked Components</h3>
-        {!hasData ? (
+        {!hasCommits ? (
           <div className="text-gray-500 italic">
             No component data available yet.
           </div>
