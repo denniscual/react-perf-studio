@@ -104,6 +104,7 @@ export const ProfilerControls = React.memo(function ProfilerControls() {
 });
 
 type CommitData = {
+  id: string;
   name: string;
   duration: number;
   commitAt: string;
@@ -126,7 +127,9 @@ export function ProfilerGraph() {
   );
 
   // State to track which commit is selected
-  const [selectedCommit, setSelectedCommit] = React.useState(null);
+  const [selectedCommit, setSelectedCommit] = React.useState<string | null>(
+    null
+  );
 
   // Transform Map data into array format for the chart
   const commits = useMemo(() => {
@@ -140,6 +143,7 @@ export function ProfilerGraph() {
       const status = getDurationStatus(totalDuration);
 
       return {
+        id: commitTime,
         name: commitTime,
         duration: totalDuration,
         commitAt: commitTime,
@@ -220,8 +224,8 @@ export function ProfilerGraph() {
                 margin={{ top: 10, right: 10, left: 10, bottom: 20 }}
                 onClick={(data) => {
                   if (data.activePayload && data.activePayload.length > 0) {
-                    const { commitAt } = data.activePayload[0].payload;
-                    setSelectedCommit(commitAt);
+                    const { id } = data.activePayload[0].payload as CommitData;
+                    setSelectedCommit(id);
                   }
                 }}
               >
@@ -232,6 +236,9 @@ export function ProfilerGraph() {
                   interval={0}
                   angle={-45}
                   textAnchor="end"
+                  label={{
+                    value: "Commit Time",
+                  }}
                 />
                 <YAxis
                   label={{
@@ -254,7 +261,7 @@ export function ProfilerGraph() {
                     <Cell
                       key={`cell-${index}`}
                       fill={
-                        selectedCommit === entry.commitAt
+                        selectedCommit === entry.id
                           ? "#3b82f6" // blue color when selected
                           : durationStatusColors[entry.status]
                       }
