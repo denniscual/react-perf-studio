@@ -452,10 +452,6 @@ function ComponentTooltip({ active, payload }: TooltipProps<number, string>) {
           {formatMilliseconds(data.actualDuration)}
         </p>
         <p className="text-sm">
-          <b className="font-bold">Base duration</b>:{" "}
-          {formatMilliseconds(data.baseDuration)}
-        </p>
-        <p className="text-sm">
           <b className="font-bold">Phase</b>: {data.phase}
         </p>
         <p className="text-xs mt-1 text-gray-500">
