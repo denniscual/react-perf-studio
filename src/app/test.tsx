@@ -2,6 +2,14 @@
 import React, { useMemo, useSyncExternalStore } from "react";
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis } from "recharts";
 
+// Helper function to simulate computational delay
+function simulateDelay(milliseconds: number = 50): void {
+  const startTime = performance.now();
+  while (performance.now() - startTime < milliseconds) {
+    // Busy wait to simulate CPU-intensive work
+  }
+}
+
 export default function TestList() {
   const [text, setText] = React.useState("");
   const deferredText = React.useDeferredValue(text);
@@ -149,69 +157,6 @@ function ProfilerGraph() {
   );
 }
 
-// function ProfilerView({
-//   profilerDataStore,
-// }: {
-//   profilerDataStore: ProfilerDataStore;
-// }) {
-//   // Use useState and useEffect to retrieve the profiler data
-//   const [profilerData, setProfilerData] = React.useState<Map<string, any[]>>(
-//     new Map()
-//   );
-
-//   React.useEffect(() => {
-//     // Update the profiler data every 500ms
-//     const intervalId = setInterval(() => {
-//       setProfilerData(new Map(profilerDataStore.records));
-//     }, 500);
-
-//     return () => clearInterval(intervalId);
-//   }, [profilerDataStore]);
-
-//   if (profilerData.size === 0) {
-//     return (
-//       <div className="text-gray-500 italic">
-//         No profiling data available yet. Start profiling and interact with the
-//         list to see data.
-//       </div>
-//     );
-//   }
-
-//   return (
-//     <div className="overflow-auto max-h-[600px]">
-//       {Array.from(profilerData.entries()).map(([commitTime, profiles]) => (
-//         <div key={commitTime} className="mb-4 border-b pb-2">
-//           <h3 className="font-medium">Commit at: {commitTime}</h3>
-//           <table className="min-w-full text-sm">
-//             <thead>
-//               <tr className="border-b">
-//                 <th className="text-left py-2">Component</th>
-//                 <th className="text-left py-2">Phase</th>
-//                 <th className="text-left py-2">Actual Duration</th>
-//                 <th className="text-left py-2">Base Duration</th>
-//               </tr>
-//             </thead>
-//             <tbody>
-//               {profiles.map((profile, idx) => (
-//                 <tr key={`${profile.id}-${idx}`}>
-//                   <td className="py-1">{profile.id}</td>
-//                   <td className="py-1">{profile.phase}</td>
-//                   <td className="py-1">
-//                     {formatMilliseconds(profile.actualDuration)}
-//                   </td>
-//                   <td className="py-1">
-//                     {formatMilliseconds(profile.baseDuration)}
-//                   </td>
-//                 </tr>
-//               ))}
-//             </tbody>
-//           </table>
-//         </div>
-//       ))}
-//     </div>
-//   );
-// }
-
 const List = React.memo(function List({ text }: { text: string }) {
   const items: React.ReactNode[] = [];
   for (let i = 0; i < 5; i++) {
@@ -234,18 +179,14 @@ const List = React.memo(function List({ text }: { text: string }) {
 });
 
 function SlowComponent() {
-  const startTime = performance.now();
-  while (performance.now() - startTime < 120) {
-    // Do nothing for 1 ms per item to emulate extremely slow code
-  }
+  // Use the reusable delay function with a longer delay
+  simulateDelay(120);
   return <div>Slow Component</div>;
 }
 
 function SlowItem({ text }: { text: string }) {
-  const startTime = performance.now();
-  while (performance.now() - startTime < 50) {
-    // Do nothing for 1 ms per item to emulate extremely slow code
-  }
+  // Use the reusable delay function with default delay
+  simulateDelay();
 
   return (
     <li className="p-2">
