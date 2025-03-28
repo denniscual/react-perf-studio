@@ -106,7 +106,8 @@ export const ProfilerControls = React.memo(function ProfilerControls() {
 type CommitData = {
   id: string;
   name: string;
-  duration: number;
+  slowestProfile: ProfilerData;
+  duration: number; // Duration of the slowest profile in the commit.
   commitAt: string;
   status: DurationStatus;
 };
@@ -132,20 +133,17 @@ export function ProfilerGraph() {
   );
 
   // Transform Map data into array format for the chart
-  const commits = useMemo(() => {
+  const commits: CommitData[] = useMemo(() => {
     return Array.from(records.entries()).map(([commitTime, profiles]) => {
-      // Calculate total duration for this commit
-      const totalDuration = profiles.reduce(
-        (sum, profile) => sum + profile.actualDuration,
-        0
-      );
-
-      const status = getDurationStatus(totalDuration);
-
+      const slowestProfile = [...profiles].sort(
+        (a, b) => b.actualDuration - a.actualDuration
+      )[0];
+      const status = getDurationStatus(slowestProfile.actualDuration);
       return {
         id: commitTime,
         name: commitTime,
-        duration: totalDuration,
+        duration: slowestProfile.actualDuration,
+        slowestProfile,
         commitAt: commitTime,
         status: status,
       };
@@ -364,14 +362,24 @@ function CommitBarTooltip({ active, payload }: TooltipProps<number, string>) {
   if (active && payload && payload.length) {
     const data = payload[0].payload as CommitData;
     const status = data.status;
+    const slowestComponent = data.slowestProfile;
     return (
       <div className="bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700 shadow-md rounded-md">
         <p className="font-medium text-sm text-gray-900 dark:text-gray-100">
           Committed at: {data.commitAt}
         </p>
-        <p className="text-sm" style={{ color: durationStatusColors[status] }}>
-          Render duration: {formatMilliseconds(data.duration)}
-        </p>
+        <div className="mt-2 border-t pt-2 dark:border-gray-700">
+          <p
+            className="text-sm"
+            style={{ color: durationStatusColors[status] }}
+          >
+            Slowest duration:{" "}
+            {formatMilliseconds(slowestComponent.actualDuration)}
+          </p>
+          <p className="text-xs text-gray-500">
+            Phase: {slowestComponent.phase}
+          </p>
+        </div>
         <p className="text-xs mt-1 text-gray-500">
           Status: {durationStatusLabels[status]}
         </p>
