@@ -215,20 +215,19 @@ export function ProfilerGraph() {
 
   return (
     <div className="space-y-4">
-      {selectedCommit && (
-        <div className="mt-2 text-sm text-right">
-          <span className="font-medium">Selected commit:</span>{" "}
-          <span className="text-blue-600 dark:text-blue-400">
-            {selectedCommit}
+      <div className="mt-2 flex flex-row-reverse flex-wrap gap-2 text-xs">
+        {Object.entries(durationStatusLabels).map(([status, label]) => (
+          <span key={status} className="flex items-center">
+            <span
+              className="h-3 w-3 inline-block mr-1 rounded"
+              style={{
+                backgroundColor: durationStatusColors[status as DurationStatus],
+              }}
+            ></span>
+            {label}
           </span>
-          <button
-            onClick={() => setSelectedCommit(null)}
-            className="ml-2 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 underline"
-          >
-            Clear selection
-          </button>
-        </div>
-      )}
+        ))}
+      </div>
       <div
         style={{ width: "100%", height: 200 }}
         className="border rounded-md p-2"
@@ -291,27 +290,9 @@ export function ProfilerGraph() {
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <div className="mt-2 flex flex-wrap gap-2 text-xs">
-        {Object.entries(durationStatusLabels).map(([status, label]) => (
-          <span key={status} className="flex items-center">
-            <span
-              className="h-3 w-3 inline-block mr-1 rounded"
-              style={{
-                backgroundColor: durationStatusColors[status as DurationStatus],
-              }}
-            ></span>
-            {label}
-          </span>
-        ))}
-      </div>
-      <div className="mt-4">
-        <div className="flex justify-between items-center mb-2">
+      <div className="space-y-3">
+        <div className="flex justify-between items-center">
           <h3 className="font-medium">Ranked Components</h3>
-          {selectedCommit && (
-            <div className="text-sm text-gray-500">
-              For commit at: {selectedCommit}
-            </div>
-          )}
         </div>
         {!selectedCommit ? (
           <div className="text-gray-500 italic p-4 border rounded-md">
@@ -330,8 +311,7 @@ export function ProfilerGraph() {
 }
 
 function RankedComponentsChart({ data }: { data: ComponentStat[] }) {
-  // Limit to top 10 components for better visualization
-  const topComponents = data.slice(0, 10);
+  const topComponents = data;
 
   return (
     <div

@@ -22,8 +22,8 @@ export default function TestList() {
           </div>
           {/* Right Pane - Profiler View */}
           <div className="w-7/10 border border-gray-200 rounded-md p-4">
-            <h2 className="text-lg font-bold mb-4">Profiler Data</h2>
-            <div className="space-y-4">
+            <h2 className="text-lg font-bold mb-6">Profiler</h2>
+            <div className="space-y-5">
               <ProfilerControls />
               <ProfilerGraph />
             </div>
