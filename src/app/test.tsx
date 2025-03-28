@@ -1,5 +1,6 @@
 "use client";
-import React from "react";
+import React, { useMemo, useSyncExternalStore } from "react";
+import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis } from "recharts";
 
 export default function TestList() {
   const [text, setText] = React.useState("");
@@ -27,7 +28,8 @@ export default function TestList() {
           <h2 className="text-lg font-bold mb-4">Profiler Data</h2>
           <div className="space-y-3">
             <ProfilerControls profilerDataStore={profilerDataStore} />
-            <ProfilerView profilerDataStore={profilerDataStore} />
+            <ProfilerGraph />
+            {/* <ProfilerView profilerDataStore={profilerDataStore} /> */}
           </div>
         </div>
       </div>
@@ -67,68 +69,148 @@ const ProfilerControls = React.memo(function ProfilerControls({
   );
 });
 
-function ProfilerView({
-  profilerDataStore,
-}: {
-  profilerDataStore: ProfilerDataStore;
-}) {
-  // Use useState and useEffect to retrieve the profiler data
-  const [profilerData, setProfilerData] = React.useState<Map<string, any[]>>(
-    new Map()
+function ProfilerGraph() {
+  const records = useSyncExternalStore(
+    profilerDataStore.subscribe,
+    profilerDataStore.getSnapshot,
+    profilerDataStore.getSnapshot
   );
 
-  React.useEffect(() => {
-    // Update the profiler data every 500ms
-    const intervalId = setInterval(() => {
-      setProfilerData(new Map(profilerDataStore.records));
-    }, 500);
+  // Transform Map data into array format for the chart
+  const data = useMemo(() => {
+    return Array.from(records.entries()).map(([commitTime, profiles]) => {
+      // Calculate total duration for this commit
+      const totalDuration = profiles.reduce(
+        (sum, profile) => sum + profile.actualDuration,
+        0
+      );
+      return {
+        name: commitTime,
+        duration: totalDuration, // Using a more descriptive key name
+      };
+    });
+  }, [records]);
 
-    return () => clearInterval(intervalId);
-  }, [profilerDataStore]);
-
-  if (profilerData.size === 0) {
-    return (
-      <div className="text-gray-500 italic">
-        No profiling data available yet. Start profiling and interact with the
-        list to see data.
-      </div>
-    );
-  }
+  // Check if we have data to display
+  const hasData = data.length > 0;
 
   return (
-    <div className="overflow-auto max-h-[600px]">
-      {Array.from(profilerData.entries()).map(([commitTime, profiles]) => (
-        <div key={commitTime} className="mb-4 border-b pb-2">
-          <h3 className="font-medium">Commit at: {commitTime}</h3>
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left py-2">Component</th>
-                <th className="text-left py-2">Phase</th>
-                <th className="text-left py-2">Actual Duration</th>
-                <th className="text-left py-2">Base Duration</th>
-              </tr>
-            </thead>
-            <tbody>
-              {profiles.map((profile, idx) => (
-                <tr key={`${profile.id}-${idx}`}>
-                  <td className="py-1">{profile.id}</td>
-                  <td className="py-1">{profile.phase}</td>
-                  <td className="py-1">
-                    {formatMilliseconds(profile.actualDuration)}
-                  </td>
-                  <td className="py-1">
-                    {formatMilliseconds(profile.baseDuration)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <div className="space-y-4">
+      <h3 className="font-medium">Commit Performance</h3>
+
+      {!hasData ? (
+        <div className="text-gray-500 italic">
+          No chart data available yet. Start profiling and interact with the
+          list to see data.
         </div>
-      ))}
+      ) : (
+        <div
+          style={{ width: "100%", height: 200 }}
+          className="border rounded-md p-2"
+        >
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={data}
+              margin={{ top: 10, right: 10, left: 10, bottom: 20 }}
+            >
+              <XAxis
+                dataKey="name"
+                tick={{ fontSize: 10 }}
+                height={40}
+                interval={0}
+                angle={-45}
+                textAnchor="end"
+              />
+              <YAxis
+                label={{
+                  value: "Duration (ms)",
+                  angle: -90,
+                  position: "insideLeft",
+                }}
+                tick={{ fontSize: 10 }}
+              />
+              <Bar dataKey="duration" fill="#8884d8" name="Render Duration" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      <div>
+        <h3 className="font-medium">Ranked Components</h3>
+        {!hasData ? (
+          <div className="text-gray-500 italic">
+            No component data available yet.
+          </div>
+        ) : (
+          <div>Component ranking will appear here</div>
+        )}
+      </div>
     </div>
   );
 }
+
+// function ProfilerView({
+//   profilerDataStore,
+// }: {
+//   profilerDataStore: ProfilerDataStore;
+// }) {
+//   // Use useState and useEffect to retrieve the profiler data
+//   const [profilerData, setProfilerData] = React.useState<Map<string, any[]>>(
+//     new Map()
+//   );
+
+//   React.useEffect(() => {
+//     // Update the profiler data every 500ms
+//     const intervalId = setInterval(() => {
+//       setProfilerData(new Map(profilerDataStore.records));
+//     }, 500);
+
+//     return () => clearInterval(intervalId);
+//   }, [profilerDataStore]);
+
+//   if (profilerData.size === 0) {
+//     return (
+//       <div className="text-gray-500 italic">
+//         No profiling data available yet. Start profiling and interact with the
+//         list to see data.
+//       </div>
+//     );
+//   }
+
+//   return (
+//     <div className="overflow-auto max-h-[600px]">
+//       {Array.from(profilerData.entries()).map(([commitTime, profiles]) => (
+//         <div key={commitTime} className="mb-4 border-b pb-2">
+//           <h3 className="font-medium">Commit at: {commitTime}</h3>
+//           <table className="min-w-full text-sm">
+//             <thead>
+//               <tr className="border-b">
+//                 <th className="text-left py-2">Component</th>
+//                 <th className="text-left py-2">Phase</th>
+//                 <th className="text-left py-2">Actual Duration</th>
+//                 <th className="text-left py-2">Base Duration</th>
+//               </tr>
+//             </thead>
+//             <tbody>
+//               {profiles.map((profile, idx) => (
+//                 <tr key={`${profile.id}-${idx}`}>
+//                   <td className="py-1">{profile.id}</td>
+//                   <td className="py-1">{profile.phase}</td>
+//                   <td className="py-1">
+//                     {formatMilliseconds(profile.actualDuration)}
+//                   </td>
+//                   <td className="py-1">
+//                     {formatMilliseconds(profile.baseDuration)}
+//                   </td>
+//                 </tr>
+//               ))}
+//             </tbody>
+//           </table>
+//         </div>
+//       ))}
+//     </div>
+//   );
+// }
 
 const List = React.memo(function List({ text }: { text: string }) {
   const items: React.ReactNode[] = [];
@@ -166,25 +248,27 @@ function WrapperProfiler(props: { id: string; children: React.ReactNode }) {
 
 type ProfilerOnRender = React.ComponentProps<typeof React.Profiler>["onRender"];
 type ProfilerPhase = Parameters<ProfilerOnRender>["1"];
+type ProfilerRecords = Map<string, ProfilerData[]>;
+type ProfilerData = {
+  id: string;
+  phase: ProfilerPhase;
+  actualDuration: number;
+  baseDuration: number;
+  startTime: number;
+  commitTime: number;
+  formattedCommitTime: string;
+};
+type ProfilerSubscriber = (records: ProfilerRecords) => void;
 
 class ProfilerDataStore {
-  records: Map<
-    string,
-    {
-      id: string;
-      phase: ProfilerPhase;
-      actualDuration: number;
-      baseDuration: number;
-      startTime: number;
-      commitTime: number;
-      formattedCommitTime: string;
-    }[]
-  >;
+  records: ProfilerRecords;
   isProfilingStarted: boolean;
+  subscribers: Map<ProfilerSubscriber, ProfilerSubscriber>;
 
   constructor() {
     this.records = new Map();
     this.isProfilingStarted = false;
+    this.subscribers = new Map();
   }
 
   startProfiling = () => {
@@ -198,8 +282,6 @@ class ProfilerDataStore {
     const date = new Date();
     console.log("[Profiler] Ended profiling session:", date);
   };
-
-  parse = () => {};
 
   recordProfilerData: ProfilerOnRender = (
     id,
@@ -225,13 +307,34 @@ class ProfilerDataStore {
       formattedCommitTime,
     };
 
-    const commitTimeRecords = this.records.get(formattedCommitTime) ?? [];
+    const newRecords = new Map(this.records);
 
-    if (!this.records.has(formattedCommitTime)) {
-      this.records.set(formattedCommitTime, [profile]);
+    const commitTimeRecords = newRecords.get(formattedCommitTime) ?? [];
+
+    if (!newRecords.has(formattedCommitTime)) {
+      newRecords.set(formattedCommitTime, [profile]);
     } else {
-      this.records.set(formattedCommitTime, [...commitTimeRecords, profile]);
+      newRecords.set(formattedCommitTime, [...commitTimeRecords, profile]);
     }
+
+    this.records = newRecords;
+
+    // Notify subscribers with the new profiler data
+    this.subscribers.forEach((callback) => {
+      callback(newRecords);
+    });
+  };
+
+  subscribe = (callback: ProfilerSubscriber) => {
+    this.subscribers.set(callback, callback);
+
+    return () => {
+      this.subscribers.delete(callback);
+    };
+  };
+
+  getSnapshot = () => {
+    return this.records;
   };
 }
 
