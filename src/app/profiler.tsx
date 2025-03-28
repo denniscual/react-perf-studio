@@ -205,13 +205,9 @@ export function ProfilerGraph() {
     profilerDataStore.getSnapshot
   );
   const { isProfilingStarted } = useProfilerProvider();
+  const [selectedCommitIndex, setSelectedCommitIndex] = React.useState(0);
 
-  // State to track which commit is selected
-  const [selectedCommit, setSelectedCommit] = React.useState<string | null>(
-    null
-  );
-
-  // Transform Map data into array format for the chart
+  // Transform into format for the chart
   const commits: CommitData[] = useMemo(() => {
     return Array.from(records.entries()).map(([commitTime, profiles]) => {
       const slowestProfile = [...profiles].sort(
@@ -229,7 +225,8 @@ export function ProfilerGraph() {
     });
   }, [records]);
 
-  // Check if we have data to display
+  const selectedCommit = commits[selectedCommitIndex];
+
   const hasCommits = commits.length > 0;
 
   // Calculate ranked component data for the selected commit
@@ -237,7 +234,8 @@ export function ProfilerGraph() {
     if (!selectedCommit) return [] as ComponentStat[];
 
     // Get profiles for the selected commit
-    const commitProfiles = records.get(selectedCommit);
+    const commitProfiles = records.get(selectedCommit.id);
+
     if (!commitProfiles || commitProfiles.length === 0)
       return [] as ComponentStat[];
 
@@ -254,25 +252,17 @@ export function ProfilerGraph() {
       .sort((a, b) => b.actualDuration - a.actualDuration);
   }, [records, selectedCommit]);
 
-  // Find the current commit index
-  const currentCommitIndex = useMemo(() => {
-    if (!selectedCommit || !hasCommits) return -1;
-    return commits.findIndex((commit) => commit.id === selectedCommit);
-  }, [commits, selectedCommit, hasCommits]);
-
-  // Navigate to previous commit
   const handlePrevCommit = useCallback(() => {
-    if (currentCommitIndex > 0) {
-      setSelectedCommit(commits[currentCommitIndex - 1].id);
+    if (selectedCommitIndex > 0) {
+      setSelectedCommitIndex(selectedCommitIndex - 1);
     }
-  }, [commits, currentCommitIndex]);
+  }, [selectedCommitIndex]);
 
-  // Navigate to next commit
   const handleNextCommit = useCallback(() => {
-    if (currentCommitIndex < commits.length - 1) {
-      setSelectedCommit(commits[currentCommitIndex + 1].id);
+    if (selectedCommitIndex < commits.length - 1) {
+      setSelectedCommitIndex(selectedCommitIndex + 1);
     }
-  }, [commits, currentCommitIndex]);
+  }, [commits.length, selectedCommitIndex]);
 
   const commitsNavControl = useMemo(() => {
     return (
@@ -281,9 +271,9 @@ export function ProfilerGraph() {
           <>
             <button
               onClick={handlePrevCommit}
-              disabled={currentCommitIndex <= 0}
+              disabled={selectedCommitIndex <= 0}
               className={`p-1 rounded-md ${
-                currentCommitIndex <= 0
+                selectedCommitIndex <= 0
                   ? "text-gray-400 cursor-not-allowed"
                   : "text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900"
               }`}
@@ -303,16 +293,18 @@ export function ProfilerGraph() {
                 />
               </svg>
             </button>
-
             <span className="text-xs text-gray-500">
-              Commit {currentCommitIndex + 1} of {commits.length}
+              Commit {selectedCommitIndex + 1} of {commits.length}
             </span>
-
             <button
               onClick={handleNextCommit}
-              disabled={currentCommitIndex >= commits.length - 1}
+              disabled={
+                selectedCommitIndex === null ||
+                selectedCommitIndex >= commits.length - 1
+              }
               className={`p-1 rounded-md ${
-                currentCommitIndex >= commits.length - 1
+                selectedCommitIndex === null ||
+                selectedCommitIndex >= commits.length - 1
                   ? "text-gray-400 cursor-not-allowed"
                   : "text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900"
               }`}
@@ -332,16 +324,8 @@ export function ProfilerGraph() {
                 />
               </svg>
             </button>
-
-            <button
-              onClick={() => setSelectedCommit(null)}
-              className="ml-2 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 underline"
-            >
-              Clear selection
-            </button>
           </>
         </div>
-
         <div className="flex flex-wrap gap-2 text-xs">
           {Object.entries(durationStatusLabels).map(([status, label]) => (
             <span key={status} className="flex items-center">
@@ -358,13 +342,7 @@ export function ProfilerGraph() {
         </div>
       </div>
     );
-  }, [
-    commits.length,
-    currentCommitIndex,
-    handleNextCommit,
-    handlePrevCommit,
-    selectedCommit,
-  ]);
+  }, [commits.length, handleNextCommit, handlePrevCommit, selectedCommitIndex]);
 
   if (!hasCommits || isProfilingStarted) {
     return (
@@ -387,9 +365,9 @@ export function ProfilerGraph() {
             data={commits}
             margin={{ top: 10, right: 10, left: 10, bottom: 20 }}
             onClick={(data) => {
-              if (data.activePayload && data.activePayload.length > 0) {
-                const { id } = data.activePayload[0].payload as CommitData;
-                setSelectedCommit(id);
+              if (data && data.activePayload && data.activePayload.length > 0) {
+                const index = data.activeTooltipIndex;
+                setSelectedCommitIndex(index !== undefined ? index : 0);
               }
             }}
           >
@@ -425,15 +403,13 @@ export function ProfilerGraph() {
                 <Cell
                   key={`cell-${index}`}
                   fill={
-                    selectedCommit === entry.id
+                    selectedCommitIndex === index
                       ? "#3b82f6" // blue color when selected
                       : durationStatusColors[entry.status]
                   }
-                  fillOpacity={selectedCommit === entry.commitAt ? 1 : 0.7}
-                  stroke={
-                    selectedCommit === entry.commitAt ? "#2563eb" : "none"
-                  }
-                  strokeWidth={selectedCommit === entry.commitAt ? 1 : 0}
+                  fillOpacity={selectedCommitIndex === index ? 1 : 0.7}
+                  stroke={selectedCommitIndex === index ? "#2563eb" : "none"}
+                  strokeWidth={selectedCommitIndex === index ? 1 : 0}
                 />
               ))}
             </Bar>
@@ -443,6 +419,11 @@ export function ProfilerGraph() {
       <div className="space-y-3">
         <div className="flex justify-between items-center">
           <h3 className="font-medium">Ranked Components</h3>
+          {selectedCommit && (
+            <div className="text-sm text-gray-500">
+              For commit at: {selectedCommit.id}
+            </div>
+          )}
         </div>
         {!selectedCommit ? (
           <div className="text-gray-500 italic p-4 border rounded-md">
@@ -589,6 +570,7 @@ type ProfilerData = {
   commitTime: number;
   formattedCommitTime: string;
 };
+// eslint-disable-next-line no-unused-vars
 type ProfilerSubscriber = (records: ProfilerRecords) => void;
 type ProfilerExportedData = {
   commits: {
