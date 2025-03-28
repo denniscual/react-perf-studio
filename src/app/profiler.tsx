@@ -146,28 +146,24 @@ export const ProfilerControls = React.memo(function ProfilerControls() {
       >
         {isProfilingStarted ? "Stop Profiling" : "Start Profiling"}
       </button>
-
+      <button
+        onClick={handleExportData}
+        className="px-4 py-2 text-sm font-medium bg-gray-600 text-white hover:bg-gray-700 rounded-md focus:outline-none transition-colors"
+      >
+        Export Data
+      </button>
+      <button
+        onClick={handleUploadClick}
+        className="px-4 py-2 text-sm font-medium bg-gray-600 text-white hover:bg-gray-700 rounded-md focus:outline-none transition-colors"
+      >
+        Upload Data
+      </button>
       <button
         onClick={handleResetData}
         className="px-4 py-2 text-sm font-medium bg-gray-600 text-white hover:bg-gray-700 rounded-md focus:outline-none transition-colors"
       >
         Reset Data
       </button>
-
-      <button
-        onClick={handleExportData}
-        className="px-4 py-2 text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 rounded-md focus:outline-none transition-colors"
-      >
-        Export Data
-      </button>
-
-      <button
-        onClick={handleUploadClick}
-        className="px-4 py-2 text-sm font-medium bg-purple-600 text-white hover:bg-purple-700 rounded-md focus:outline-none transition-colors"
-      >
-        Upload Data
-      </button>
-
       {/* Hidden file input */}
       <input
         type="file"
