@@ -164,26 +164,17 @@ export function ProfilerGraph() {
     if (!commitProfiles || commitProfiles.length === 0)
       return [] as ComponentStat[];
 
-    // Group by component ID and calculate metrics for this commit only
-    const componentStats = new Map<string, ComponentStat>();
-
-    commitProfiles.forEach((profile) => {
-      const { id, actualDuration } = profile;
-      if (!componentStats.has(id)) {
-        componentStats.set(id, {
+    return commitProfiles
+      .map(({ id, actualDuration, baseDuration, phase }) => {
+        return {
           id,
           actualDuration,
-          baseDuration: profile.baseDuration,
-          phase: profile.phase,
+          baseDuration: baseDuration,
+          phase: phase,
           status: getDurationStatus(actualDuration),
-        });
-      }
-    });
-
-    // Convert to array and sort by duration (descending)
-    return Array.from(componentStats.values()).sort(
-      (a, b) => b.actualDuration - a.actualDuration
-    );
+        };
+      })
+      .sort((a, b) => b.actualDuration - a.actualDuration);
   }, [records, selectedCommit]);
 
   return (
