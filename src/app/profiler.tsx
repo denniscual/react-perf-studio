@@ -78,10 +78,20 @@ export const ProfilerControls = React.memo(function ProfilerControls() {
   const { isProfilingStarted, setIsProfilingStarted } = useProfilerProvider();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(false);
   const [saveError, setSaveError] = React.useState<string | null>(null);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = React.useState<string | null>(null);
+  const [loadSuccess, setLoadSuccess] = React.useState<string | null>(null);
   const [profileName, setProfileName] = React.useState("");
   const [showSaveDialog, setShowSaveDialog] = React.useState(false);
+  const [showLoadDialog, setShowLoadDialog] = React.useState(false);
+  const [availableSessions, setAvailableSessions] = React.useState<
+    Array<{ id: string; name: string; createdAt: string }>
+  >([]);
+  const [selectedSession, setSelectedSession] = React.useState<string | null>(
+    null
+  );
 
   const handleToggleProfiling = React.useCallback(() => {
     const newState = !isProfilingStarted;
@@ -197,12 +207,98 @@ export const ProfilerControls = React.memo(function ProfilerControls() {
     }
   }, [profileName]);
 
+  // Function to fetch available sessions from the API
+  const fetchAvailableSessions = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
+
+    try {
+      const response = await fetch("/api/profiler");
+      if (!response.ok) {
+        throw new Error("Failed to fetch profiler sessions");
+      }
+
+      const data = await response.json();
+      setAvailableSessions(data.sessions || []);
+
+      if (data.sessions.length === 0) {
+        setLoadError("No saved profiler sessions found.");
+      }
+    } catch (error) {
+      console.error("Error fetching profiler sessions:", error);
+      setLoadError(
+        error instanceof Error ? error.message : "Failed to fetch sessions"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Function to load a session by name
+  const handleLoadSession = useCallback(async () => {
+    if (!selectedSession) {
+      setLoadError("Please select a session to load");
+      return;
+    }
+
+    setIsLoading(true);
+    setLoadError(null);
+    setLoadSuccess(null);
+
+    try {
+      const response = await fetch(
+        `/api/profiler?name=${encodeURIComponent(selectedSession)}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to load session: ${response.statusText}`);
+      }
+
+      const sessionData = await response.json();
+
+      if (!sessionData.data) {
+        throw new Error("Invalid session data format");
+      }
+
+      const success = profilerDataStore.importData(sessionData.data);
+
+      if (success) {
+        setLoadSuccess(
+          `Successfully loaded profiler session: ${selectedSession}`
+        );
+        setShowLoadDialog(false);
+      } else {
+        throw new Error("Failed to import session data");
+      }
+    } catch (error) {
+      console.error("Error loading profiler session:", error);
+      setLoadError(
+        error instanceof Error ? error.message : "Unknown error occurred"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedSession]);
+
+  // Function to open load dialog and fetch sessions
+  const handleOpenLoadDialog = useCallback(() => {
+    setShowLoadDialog(true);
+    fetchAvailableSessions();
+  }, [fetchAvailableSessions]);
+
   // Function to close save dialog
   const handleCloseSaveDialog = useCallback(() => {
     setShowSaveDialog(false);
     setProfileName("");
     setSaveError(null);
     setSaveSuccess(null);
+  }, []);
+
+  // Function to close load dialog
+  const handleCloseLoadDialog = useCallback(() => {
+    setShowLoadDialog(false);
+    setSelectedSession(null);
+    setLoadError(null);
   }, []);
 
   // Auto-dismiss success message after 3 seconds
@@ -214,6 +310,15 @@ export const ProfilerControls = React.memo(function ProfilerControls() {
       return () => clearTimeout(timer);
     }
   }, [saveSuccess]);
+
+  React.useEffect(() => {
+    if (loadSuccess) {
+      const timer = setTimeout(() => {
+        setLoadSuccess(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [loadSuccess]);
 
   return (
     <div className="space-y-3">
@@ -234,12 +339,17 @@ export const ProfilerControls = React.memo(function ProfilerControls() {
         >
           Export Data
         </button>
-        {/* New Save to Server button */}
         <button
           onClick={() => setShowSaveDialog(true)}
           className="px-4 py-2 text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 rounded-md focus:outline-none transition-colors"
         >
           Save to Server
+        </button>
+        <button
+          onClick={handleOpenLoadDialog}
+          className="px-4 py-2 text-sm font-medium bg-purple-600 text-white hover:bg-purple-700 rounded-md focus:outline-none transition-colors"
+        >
+          Load from Server
         </button>
         <button
           onClick={handleUploadClick}
@@ -253,7 +363,6 @@ export const ProfilerControls = React.memo(function ProfilerControls() {
         >
           Reset Data
         </button>
-        {/* Hidden file input */}
         <input
           type="file"
           ref={fileInputRef}
@@ -263,14 +372,18 @@ export const ProfilerControls = React.memo(function ProfilerControls() {
         />
       </div>
 
-      {/* Success message */}
       {saveSuccess && (
         <div className="mt-2 p-2 bg-green-100 border border-green-400 text-green-700 rounded">
           {saveSuccess}
         </div>
       )}
 
-      {/* Save Dialog Modal */}
+      {loadSuccess && (
+        <div className="mt-2 p-2 bg-green-100 border border-green-400 text-green-700 rounded">
+          {loadSuccess}
+        </div>
+      )}
+
       {showSaveDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full">
@@ -309,6 +422,81 @@ export const ProfilerControls = React.memo(function ProfilerControls() {
                 disabled={isSaving}
               >
                 {isSaving ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showLoadDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full">
+            <h3 className="text-lg font-semibold mb-4">
+              Load Profiler Session
+            </h3>
+
+            {isLoading ? (
+              <div className="flex justify-center items-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              </div>
+            ) : (
+              <>
+                {availableSessions.length > 0 ? (
+                  <div className="mb-4 max-h-60 overflow-y-auto">
+                    <label className="block text-sm font-medium mb-2">
+                      Select a saved profiler session:
+                    </label>
+                    <div className="space-y-2">
+                      {availableSessions.map((session) => (
+                        <div
+                          key={session.id}
+                          className={`p-2 border rounded-md cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                            selectedSession === session.name
+                              ? "bg-blue-50 border-blue-500 dark:bg-blue-900"
+                              : ""
+                          }`}
+                          onClick={() => setSelectedSession(session.name)}
+                        >
+                          <div className="font-medium">{session.name}</div>
+                          <div className="text-xs text-gray-500">
+                            Created:{" "}
+                            {new Date(session.createdAt).toLocaleString()}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-gray-500">
+                    {loadError ||
+                      "No sessions available. Save a profile first."}
+                  </div>
+                )}
+              </>
+            )}
+
+            {loadError && !isLoading && availableSessions.length > 0 && (
+              <p className="mt-1 mb-3 text-sm text-red-600">{loadError}</p>
+            )}
+
+            <div className="flex justify-end space-x-2">
+              <button
+                onClick={handleCloseLoadDialog}
+                className="px-4 py-2 text-sm font-medium bg-gray-300 hover:bg-gray-400 rounded-md"
+                disabled={isLoading}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleLoadSession}
+                className="px-4 py-2 text-sm font-medium bg-purple-600 text-white hover:bg-purple-700 rounded-md"
+                disabled={
+                  isLoading ||
+                  !selectedSession ||
+                  availableSessions.length === 0
+                }
+              >
+                {isLoading ? "Loading..." : "Load"}
               </button>
             </div>
           </div>
@@ -460,7 +648,7 @@ export function ProfilerGraph() {
               >
                 <path
                   fillRule="evenodd"
-                  d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                  d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 011.414-1.414l4 4a1 1 010 1.414l-4 4a1 1 01-1.414 0z"
                   clipRule="evenodd"
                 />
               </svg>
