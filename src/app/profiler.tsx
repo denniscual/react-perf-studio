@@ -77,6 +77,11 @@ const durationStatusLabels: Record<DurationStatus, string> = {
 export const ProfilerControls = React.memo(function ProfilerControls() {
   const { isProfilingStarted, setIsProfilingStarted } = useProfilerProvider();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isSaving, setIsSaving] = React.useState(false);
+  const [saveError, setSaveError] = React.useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = React.useState<string | null>(null);
+  const [profileName, setProfileName] = React.useState("");
+  const [showSaveDialog, setShowSaveDialog] = React.useState(false);
 
   const handleToggleProfiling = React.useCallback(() => {
     const newState = !isProfilingStarted;
@@ -139,44 +144,176 @@ export const ProfilerControls = React.memo(function ProfilerControls() {
     []
   );
 
+  // New function to handle saving profiler data to the API
+  const handleSaveData = React.useCallback(async () => {
+    if (!profileName.trim()) {
+      setSaveError("Please enter a profile name");
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError(null);
+    setSaveSuccess(null);
+
+    try {
+      // Get the current profiler data
+      const dataObj = {
+        commits: Array.from(profilerDataStore.records.entries()).map(
+          ([time, profiles]) => ({
+            id: time,
+            profiles,
+          })
+        ),
+      };
+
+      // Make the API call
+      const response = await fetch("/api/profiler", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: profileName,
+          data: dataObj,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to save profiler data");
+      }
+
+      setSaveSuccess(`Profile "${profileName}" saved successfully!`);
+      setShowSaveDialog(false);
+      setProfileName("");
+    } catch (error) {
+      console.error("Error saving profiler data:", error);
+      setSaveError(
+        error instanceof Error ? error.message : "Unknown error occurred"
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }, [profileName]);
+
+  // Function to close save dialog
+  const handleCloseSaveDialog = useCallback(() => {
+    setShowSaveDialog(false);
+    setProfileName("");
+    setSaveError(null);
+    setSaveSuccess(null);
+  }, []);
+
+  // Auto-dismiss success message after 3 seconds
+  React.useEffect(() => {
+    if (saveSuccess) {
+      const timer = setTimeout(() => {
+        setSaveSuccess(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [saveSuccess]);
+
   return (
-    <div className="flex flex-wrap gap-2">
-      <button
-        onClick={handleToggleProfiling}
-        className={`px-4 py-2 text-sm font-medium rounded-md focus:outline-none transition-colors ${
-          isProfilingStarted
-            ? "bg-red-600 text-white hover:bg-red-700"
-            : "bg-green-600 text-white hover:bg-green-700"
-        }`}
-      >
-        {isProfilingStarted ? "Stop Profiling" : "Start Profiling"}
-      </button>
-      <button
-        onClick={handleExportData}
-        className="px-4 py-2 text-sm font-medium bg-gray-600 text-white hover:bg-gray-700 rounded-md focus:outline-none transition-colors"
-      >
-        Export Data
-      </button>
-      <button
-        onClick={handleUploadClick}
-        className="px-4 py-2 text-sm font-medium bg-gray-600 text-white hover:bg-gray-700 rounded-md focus:outline-none transition-colors"
-      >
-        Upload Data
-      </button>
-      <button
-        onClick={handleResetData}
-        className="px-4 py-2 text-sm font-medium bg-gray-600 text-white hover:bg-gray-700 rounded-md focus:outline-none transition-colors"
-      >
-        Reset Data
-      </button>
-      {/* Hidden file input */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileChange}
-        accept=".json"
-        className="hidden"
-      />
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={handleToggleProfiling}
+          className={`px-4 py-2 text-sm font-medium rounded-md focus:outline-none transition-colors ${
+            isProfilingStarted
+              ? "bg-red-600 text-white hover:bg-red-700"
+              : "bg-green-600 text-white hover:bg-green-700"
+          }`}
+        >
+          {isProfilingStarted ? "Stop Profiling" : "Start Profiling"}
+        </button>
+        <button
+          onClick={handleExportData}
+          className="px-4 py-2 text-sm font-medium bg-gray-600 text-white hover:bg-gray-700 rounded-md focus:outline-none transition-colors"
+        >
+          Export Data
+        </button>
+        {/* New Save to Server button */}
+        <button
+          onClick={() => setShowSaveDialog(true)}
+          className="px-4 py-2 text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 rounded-md focus:outline-none transition-colors"
+        >
+          Save to Server
+        </button>
+        <button
+          onClick={handleUploadClick}
+          className="px-4 py-2 text-sm font-medium bg-gray-600 text-white hover:bg-gray-700 rounded-md focus:outline-none transition-colors"
+        >
+          Upload Data
+        </button>
+        <button
+          onClick={handleResetData}
+          className="px-4 py-2 text-sm font-medium bg-gray-600 text-white hover:bg-gray-700 rounded-md focus:outline-none transition-colors"
+        >
+          Reset Data
+        </button>
+        {/* Hidden file input */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          accept=".json"
+          className="hidden"
+        />
+      </div>
+
+      {/* Success message */}
+      {saveSuccess && (
+        <div className="mt-2 p-2 bg-green-100 border border-green-400 text-green-700 rounded">
+          {saveSuccess}
+        </div>
+      )}
+
+      {/* Save Dialog Modal */}
+      {showSaveDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full">
+            <h3 className="text-lg font-semibold mb-4">Save Profiler Data</h3>
+            <div className="mb-4">
+              <label
+                htmlFor="profile-name"
+                className="block text-sm font-medium mb-1"
+              >
+                Profile Name
+              </label>
+              <input
+                id="profile-name"
+                type="text"
+                value={profileName}
+                onChange={(e) => setProfileName(e.target.value)}
+                placeholder="Enter a name for this profile"
+                className="w-full p-2 border rounded-md"
+                disabled={isSaving}
+              />
+              {saveError && (
+                <p className="mt-1 text-sm text-red-600">{saveError}</p>
+              )}
+            </div>
+            <div className="flex justify-end space-x-2">
+              <button
+                onClick={handleCloseSaveDialog}
+                className="px-4 py-2 text-sm font-medium bg-gray-300 hover:bg-gray-400 rounded-md"
+                disabled={isSaving}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveData}
+                className="px-4 py-2 text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 rounded-md"
+                disabled={isSaving}
+              >
+                {isSaving ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 });
