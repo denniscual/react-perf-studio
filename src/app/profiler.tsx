@@ -35,7 +35,7 @@ export function ProfilerProvider(props: React.PropsWithChildren) {
   return <ProfilerProviderContext value={value} {...props} />;
 }
 
-function useProfilerProvider() {
+export function useProfilerProvider() {
   const ctx = React.useContext(ProfilerProviderContext);
   if (!ctx) {
     throw new Error(
