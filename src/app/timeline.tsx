@@ -11,7 +11,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-const UserEventTimeline = ({ renders, inputs }: any) => {
+const Timeline = ({ renders, inputs }: any) => {
   // Define the events data with an added "category" property to group events
   const events = [
     // Input events (y: 2)
@@ -146,4 +146,4 @@ const UserEventTimeline = ({ renders, inputs }: any) => {
   );
 };
 
-export default UserEventTimeline;
+export default Timeline;
