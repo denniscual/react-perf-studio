@@ -168,7 +168,7 @@ export const ProfilerControls = React.memo(function ProfilerControls() {
     try {
       // Get the current profiler data
       const dataObj = {
-        commits: Array.from(profilerDataStore.records.entries()).map(
+        commits: Array.from(profilerDataStore.session.commits.entries()).map(
           ([time, profiles]) => ({
             id: time,
             profiles,
@@ -528,7 +528,7 @@ type ComponentStat = {
 //   the exact timestamp when each component was rendered during the profiling session.
 //   "Rendered At" will be shown if a Component is selected in the Ranked Components chart.
 export function ProfilerGraph() {
-  const records = useSyncExternalStore(
+  const { commits: commitsMap } = useSyncExternalStore(
     profilerDataStore.subscribe,
     profilerDataStore.getSnapshot,
     profilerDataStore.getSnapshot
@@ -538,7 +538,7 @@ export function ProfilerGraph() {
 
   // Transform into format for the chart
   const commits: CommitData[] = useMemo(() => {
-    return Array.from(records.entries()).map(([commitTime, profiles]) => {
+    return Array.from(commitsMap.entries()).map(([commitTime, profiles]) => {
       const slowestProfile = [...profiles].sort(
         (a, b) => b.actualDuration - a.actualDuration
       )[0];
@@ -552,7 +552,7 @@ export function ProfilerGraph() {
         status: status,
       };
     });
-  }, [records]);
+  }, [commitsMap]);
 
   const selectedCommit = commits[selectedCommitIndex];
 
@@ -563,7 +563,7 @@ export function ProfilerGraph() {
     if (!selectedCommit) return [] as ComponentStat[];
 
     // Get profiles for the selected commit
-    const commitProfiles = records.get(selectedCommit.id);
+    const commitProfiles = commitsMap.get(selectedCommit.id);
 
     if (!commitProfiles || commitProfiles.length === 0)
       return [] as ComponentStat[];
@@ -579,7 +579,7 @@ export function ProfilerGraph() {
         };
       })
       .sort((a, b) => b.actualDuration - a.actualDuration);
-  }, [records, selectedCommit]);
+  }, [commitsMap, selectedCommit]);
 
   const handlePrevCommit = useCallback(() => {
     if (selectedCommitIndex > 0) {
@@ -891,9 +891,6 @@ export function Profiler(props: { id: string; children: React.ReactNode }) {
   );
 }
 
-type ProfilerOnRender = React.ComponentProps<typeof React.Profiler>["onRender"];
-type ProfilerPhase = Parameters<ProfilerOnRender>["1"];
-type ProfilerRecords = Map<string, ProfilerData[]>;
 type ProfilerData = {
   id: string;
   phase: ProfilerPhase;
@@ -903,22 +900,38 @@ type ProfilerData = {
   commitTime: number;
   formattedCommitTime: string;
 };
-// eslint-disable-next-line no-unused-vars
-type ProfilerSubscriber = (records: ProfilerRecords) => void;
+type ProfilerOnRender = React.ComponentProps<typeof React.Profiler>["onRender"];
+type ProfilerPhase = Parameters<ProfilerOnRender>["1"];
+type ProfilerRecords = Map<string, ProfilerData[]>;
+type ProfilerRenders = Map<string, ProfilerData[]>;
+type Profiles = ProfilerData[];
+type ProfilerSession = {
+  profiles: Profiles;
+  commits: ProfilerRecords;
+  renders: ProfilerRenders;
+};
+type ProfilerSubscriber = (
+  // eslint-disable-next-line no-unused-vars
+  session: ProfilerSession
+) => void;
 type ProfilerExportedData = {
   commits: {
     id: string; // This is the commit time.
-    profiles: ProfilerData[];
+    profiles: Profiles;
   }[];
 };
 
 class ProfilerDataStore {
-  records: ProfilerRecords;
+  session: ProfilerSession;
   isProfilingStarted: boolean;
   subscribers: Map<ProfilerSubscriber, ProfilerSubscriber>;
 
   constructor() {
-    this.records = new Map();
+    this.session = {
+      profiles: [],
+      commits: new Map(),
+      renders: new Map(),
+    };
     this.isProfilingStarted = false;
     this.subscribers = new Map();
   }
@@ -959,7 +972,33 @@ class ProfilerDataStore {
       formattedCommitTime,
     };
 
-    const newRecords = new Map(this.records);
+    const newProfiles = this.setProfiles(profile);
+    const newCommits = this.setCommits(profile);
+    const newRenders = this.setRenders(profile);
+
+    this.session = {
+      profiles: newProfiles,
+      commits: newCommits,
+      renders: newRenders,
+    };
+
+    this.subscribers.forEach((callback) => {
+      callback(this.session);
+    });
+  };
+
+  setProfilerSession = (session: ProfilerSession) => {
+    this.session = session;
+  };
+
+  setProfiles = (profile: ProfilerData) => {
+    const newProfiles = [...this.session.profiles, profile];
+    return newProfiles;
+  };
+
+  setCommits = (profile: ProfilerData) => {
+    const formattedCommitTime = formatMilliseconds(profile.commitTime);
+    const newRecords = new Map(this.session.commits);
 
     const commitTimeRecords = newRecords.get(formattedCommitTime) ?? [];
 
@@ -969,25 +1008,45 @@ class ProfilerDataStore {
       newRecords.set(formattedCommitTime, [...commitTimeRecords, profile]);
     }
 
-    this.records = newRecords;
+    return newRecords;
+  };
 
-    // Notify subscribers with the new profiler data
-    this.subscribers.forEach((callback) => {
-      callback(newRecords);
-    });
+  setRenders = (profile: ProfilerData) => {
+    const formattedRenderStartTime = formatMilliseconds(profile.startTime);
+    const newRenders = new Map(this.session.renders);
+
+    const renderTimeRecords = newRenders.get(formattedRenderStartTime) ?? [];
+
+    if (!newRenders.has(formattedRenderStartTime)) {
+      newRenders.set(formattedRenderStartTime, [profile]);
+    } else {
+      newRenders.set(formattedRenderStartTime, [...renderTimeRecords, profile]);
+    }
+
+    return newRenders;
+  };
+
+  resetSession = () => {
+    this.session = {
+      profiles: [],
+      commits: new Map(),
+      renders: new Map(),
+    };
   };
 
   clearData = () => {
-    this.records = new Map();
+    this.resetSession();
+
     // Notify subscribers of the change
     this.subscribers.forEach((callback) => {
-      callback(this.records);
+      callback(this.session);
     });
   };
 
   exportData = () => {
+    const { commits } = this.session;
     const data: ProfilerExportedData = {
-      commits: Array.from(this.records.entries()).map(([time, profiles]) => ({
+      commits: Array.from(commits.entries()).map(([time, profiles]) => ({
         id: time,
         profiles,
       })),
@@ -1002,21 +1061,27 @@ class ProfilerDataStore {
         throw new Error("Invalid data format");
       }
 
-      // Clear existing records
-      this.records = new Map();
+      // Clear existing data
+      this.clearData();
 
-      // Import the data
+      // Import commits.
       data.commits.forEach((commit) => {
         if (commit.id && Array.isArray(commit.profiles)) {
-          this.records.set(commit.id, commit.profiles);
+          this.session.commits.set(commit.id, commit.profiles);
         }
       });
 
-      console.log(`[Profiler] Imported data with ${this.records.size} commits`);
+      // Import profiles
+
+      // Import renders
+
+      console.log(
+        `[Profiler] Imported data with ${this.session.commits.size} commits`
+      );
 
       // Notify subscribers of the change
       this.subscribers.forEach((callback) => {
-        callback(this.records);
+        callback(this.session);
       });
 
       return true;
@@ -1035,7 +1100,7 @@ class ProfilerDataStore {
   };
 
   getSnapshot = () => {
-    return this.records;
+    return this.session;
   };
 }
 
