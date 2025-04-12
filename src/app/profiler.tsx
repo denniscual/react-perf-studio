@@ -1,3 +1,4 @@
+"use client";
 import React, {
   useMemo,
   useSyncExternalStore,
@@ -903,7 +904,7 @@ type ProfilerData = {
 type ProfilerOnRender = React.ComponentProps<typeof React.Profiler>["onRender"];
 type ProfilerPhase = Parameters<ProfilerOnRender>["1"];
 type ProfilerRecords = Map<string, ProfilerData[]>;
-type ProfilerRenders = Map<string, ProfilerData[]>;
+type ProfilerRenders = Map<number, ProfilerData>;
 type Profiles = ProfilerData[];
 type ProfilerSession = {
   profiles: Profiles;
@@ -974,7 +975,7 @@ class ProfilerDataStore {
 
     const newProfiles = this.setProfiles(profile);
     const newCommits = this.setCommits(profile);
-    const newRenders = this.setRenders(profile);
+    const newRenders = this.setRenders(newProfiles);
 
     this.session = {
       profiles: newProfiles,
@@ -1011,19 +1012,15 @@ class ProfilerDataStore {
     return newRecords;
   };
 
-  setRenders = (profile: ProfilerData) => {
-    const formattedRenderStartTime = formatMilliseconds(profile.startTime);
-    const newRenders = new Map(this.session.renders);
+  setRenders = (profiles: Profiles) => {
+    const sortedProfiles = [...profiles].sort(
+      (a, b) => a.startTime - b.startTime
+    );
 
-    const renderTimeRecords = newRenders.get(formattedRenderStartTime) ?? [];
-
-    if (!newRenders.has(formattedRenderStartTime)) {
-      newRenders.set(formattedRenderStartTime, [profile]);
-    } else {
-      newRenders.set(formattedRenderStartTime, [...renderTimeRecords, profile]);
-    }
-
-    return newRenders;
+    return sortedProfiles.reduce((acc, value) => {
+      acc.set(value.startTime, value);
+      return acc;
+    }, new Map() as ProfilerRenders);
   };
 
   resetSession = () => {
