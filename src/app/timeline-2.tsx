@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, WheelEventHandler } from "react";
 import {
   ScatterChart,
   Scatter,
@@ -115,6 +115,14 @@ const TimelineProfiler: React.FC<{
   const filter = "all";
   const [darkMode, setDarkMode] = useState<boolean>(false);
 
+  // State for zoom functionality - adding back refArea properties for area selection
+  const [zoomState, setZoomState] = useState({
+    left: minTime,
+    right: maxTime,
+    refAreaLeft: "",
+    refAreaRight: "",
+  });
+
   // State for tracking if Command key is pressed
   const [isCommandPressed, setIsCommandPressed] = useState(false);
 
@@ -142,14 +150,6 @@ const TimelineProfiler: React.FC<{
       window.removeEventListener("blur", () => setIsCommandPressed(false));
     };
   }, []);
-
-  // State for zoom functionality - adding back refArea properties for area selection
-  const [zoomState, setZoomState] = useState({
-    left: minTime,
-    right: maxTime,
-    refAreaLeft: "",
-    refAreaRight: "",
-  });
 
   // Reference to maintain the chart's current view domain
   const chartRef = useRef<any>(null);
@@ -370,49 +370,61 @@ const TimelineProfiler: React.FC<{
     });
   };
 
-  // Mouse wheel zoom functionality with improved scroll prevention
-  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    // IMPORTANT: We need to prevent default here in the React handler
-    // This works together with the DOM event listener for full coverage
-    e.preventDefault();
+  useEffect(() => {
+    // Mouse wheel zoom functionality with improved scroll prevention
+    const handleWheel: WheelEventHandler<HTMLDivElement> = (e) => {
+      // IMPORTANT: We need to prevent default here in the React handler
+      // This works together with the DOM event listener for full coverage
+      e.preventDefault();
+      e.stopPropagation();
 
-    // Don't zoom if Command key is pressed (reserved for panning)
-    if (isCommandPressed) return;
+      // Don't zoom if Command key is pressed (reserved for panning)
+      if (isCommandPressed) return;
 
-    // Get current visible range
-    const range = zoomState.right - zoomState.left;
+      // Get current visible range
+      const range = zoomState.right - zoomState.left;
 
-    // Calculate zoom factor based on wheel delta
-    // Negative delta means zoom in, positive means zoom out
-    const zoomFactor = e.deltaY < 0 ? 0.8 : 1.2;
+      // Calculate zoom factor based on wheel delta
+      // Negative delta means zoom in, positive means zoom out
+      const zoomFactor = e.deltaY < 0 ? 0.8 : 1.2;
 
-    // Calculate the point on the timeline where the mouse is
-    const chartRect = chartContainerRef.current?.getBoundingClientRect();
-    if (!chartRect) return;
+      // Calculate the point on the timeline where the mouse is
+      const chartRect = chartContainerRef.current?.getBoundingClientRect();
+      if (!chartRect) return;
 
-    // Get the relative mouse position within the chart container
-    const mouseX = (e.clientX - chartRect.left) / chartRect.width;
+      // Get the relative mouse position within the chart container
+      const mouseX = (e.clientX - chartRect.left) / chartRect.width;
 
-    // Calculate the time point under the mouse
-    const mouseTimePosition = zoomState.left + mouseX * range;
+      // Calculate the time point under the mouse
+      const mouseTimePosition = zoomState.left + mouseX * range;
 
-    // Calculate new range and boundaries, keeping the mouse position fixed
-    const newRange = Math.min(maxTime - minTime, range * zoomFactor);
-    const newLeft = Math.max(minTime, mouseTimePosition - mouseX * newRange);
-    const newRight = Math.min(maxTime, newLeft + newRange);
+      // Calculate new range and boundaries, keeping the mouse position fixed
+      const newRange = Math.min(maxTime - minTime, range * zoomFactor);
+      const newLeft = Math.max(minTime, mouseTimePosition - mouseX * newRange);
+      const newRight = Math.min(maxTime, newLeft + newRange);
 
-    // Adjust left if right exceeds maximum
-    const adjustedLeft = newRight === maxTime ? newRight - newRange : newLeft;
+      // Adjust left if right exceeds maximum
+      const adjustedLeft = newRight === maxTime ? newRight - newRange : newLeft;
 
-    // Update zoom state
-    setZoomState({
-      left: adjustedLeft,
-      right: newRight,
+      // Update zoom state
+      setZoomState((prev) => ({
+        ...prev,
+        left: adjustedLeft,
+        right: newRight,
+      }));
+
+      // Return false for extra measure (helps in some browsers)
+      return false;
+    };
+
+    chartContainerRef.current?.addEventListener("wheel", handleWheel, {
+      passive: false,
     });
 
-    // Return false for extra measure (helps in some browsers)
-    return false;
-  };
+    return () => {
+      chartContainerRef.current?.removeEventListener("wheel", handleWheel);
+    };
+  }, [isCommandPressed, maxTime, minTime, zoomState.left, zoomState.right]);
 
   // Dark mode classes
   const darkModeClasses = darkMode ? "dark" : "";
@@ -459,9 +471,6 @@ const TimelineProfiler: React.FC<{
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseLeave}
-          // We still need the React onWheel handler for zooming,
-          // but we're also adding a direct DOM listener in useEffect for scroll prevention
-          onWheel={handleWheel}
           style={{
             touchAction: "none", // Disable touch scrolling behaviors
             msOverflowStyle: "none", // Hide scrollbar in IE/Edge
