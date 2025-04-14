@@ -39,6 +39,7 @@ interface CustomShapeProps {
   payload: ChartData;
   xAxis: any;
   yAxis: any;
+  duration: number;
 }
 
 interface CustomTooltipProps {
@@ -58,7 +59,6 @@ interface ZoomState {
 const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
-    const baseTime = data.baseTime || 0;
 
     return (
       <div className="p-2 border rounded-md shadow-md dark:bg-gray-800 bg-white dark:border-gray-700 border-gray-300">
@@ -70,10 +70,10 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
           Duration: {data.duration.toFixed(2)}ms
         </p>
         <p className="text-sm dark:text-gray-300 text-gray-600">
-          Start: {((data.startTime - baseTime) / 1).toFixed(1)}ms
+          Start: {(data.startTime / 1).toFixed(1)}ms
         </p>
         <p className="text-sm dark:text-gray-300 text-gray-600">
-          End: {((data.endTime - baseTime) / 1).toFixed(1)}ms
+          End: {(data.endTime / 1).toFixed(1)}ms
         </p>
       </div>
     );
@@ -83,7 +83,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
 
 // Custom shape for the events in the timeline
 const CustomShape: React.FC<CustomShapeProps> = (props) => {
-  const { cx, payload, xAxis } = props;
+  const { cx, payload, duration } = props;
   const eventHeight = 25;
   const verticalSpacing = 40;
 
@@ -119,7 +119,7 @@ const CustomShape: React.FC<CustomShapeProps> = (props) => {
     <Rectangle
       x={cx}
       y={yOffset - eventHeight / 2} // Use fixed positions instead of cy
-      width={xAxis.scale(payload.endTime) - xAxis.scale(payload.startTime)}
+      width={duration}
       height={eventHeight}
       fill={color}
       fillOpacity={opacity}
