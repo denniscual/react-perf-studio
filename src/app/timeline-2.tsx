@@ -15,7 +15,7 @@ import {
 // Type definitions
 interface ProfilerEvent {
   id: string;
-  type: "render" | "input";
+  type: "render" | "input" | "resource";
   name: string;
   startTime: number;
   endTime: number;
@@ -88,15 +88,31 @@ const CustomShape: React.FC<CustomShapeProps> = (props) => {
   const verticalSpacing = 40; // Space between different event types
 
   // Different colors based on event type and theme
-  const color = payload.type === "render" ? "#4299e1" : "#ed64a6";
+  let color;
+  switch (payload.type) {
+    case "render":
+      color = "#4299e1"; // Blue
+      break;
+    case "input":
+      color = "#ed64a6"; // Pink
+      break;
+    case "resource":
+      color = "#48bb78"; // Green
+      break;
+    default:
+      color = "#a0aec0"; // Gray fallback
+  }
+
   const opacity = 0.8;
 
   // Adjusted to position events in the center of the chart vertically
   let yOffset = 0;
   if (payload.type === "render") {
-    yOffset = 120; // Centered render events
-  } else {
-    yOffset = 120 + verticalSpacing; // Input events below render events
+    yOffset = 100; // Centered render events
+  } else if (payload.type === "input") {
+    yOffset = 100 + verticalSpacing; // Input events below render events
+  } else if (payload.type === "resource") {
+    yOffset = 100 + verticalSpacing * 2; // Resource events at the bottom
   }
 
   return (
@@ -460,7 +476,7 @@ const TimelineProfiler: React.FC<{
         {/* Controls */}
         <div className="flex justify-between p-2 dark:bg-gray-800 dark:border-gray-700 bg-white border-b">
           {/* Legend */}
-          <div className="flex items-center space-x-8">
+          <div className="flex items-center space-x-6">
             <div className="flex items-center">
               <div className="w-4 h-4 mr-2 bg-blue-500 rounded"></div>
               <span className="dark:text-white">Render Events</span>
@@ -468,6 +484,10 @@ const TimelineProfiler: React.FC<{
             <div className="flex items-center">
               <div className="w-4 h-4 mr-2 bg-pink-500 rounded"></div>
               <span className="dark:text-white">Input Events</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-4 mr-2 bg-green-500 rounded"></div>
+              <span className="dark:text-white">Resource Events</span>
             </div>
           </div>
 
@@ -548,7 +568,7 @@ const TimelineProfiler: React.FC<{
                   type="number"
                   dataKey="y"
                   name="Track"
-                  domain={[0, 4]}
+                  domain={[0, 6]} // Increased to accommodate more event types
                   tickCount={2}
                   hide={true}
                   padding={{ top: 20, bottom: 20 }}
