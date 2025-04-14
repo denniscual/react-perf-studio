@@ -82,13 +82,12 @@ const CustomShape: React.FC<CustomShapeProps> = (props) => {
   const color = payload.type === "render" ? "#4299e1" : "#ed64a6";
   const opacity = 0.8;
 
-  // Position render events lower and input events even lower
-  // This creates a vertical stacking effect
+  // Adjusted to position events in the center of the chart vertically
   let yOffset = 0;
   if (payload.type === "render") {
-    yOffset = 50; // Position render events in the middle
+    yOffset = 120; // Centered render events
   } else {
-    yOffset = 50 + verticalSpacing; // Position input events below render events
+    yOffset = 120 + verticalSpacing; // Input events below render events
   }
 
   return (
@@ -181,9 +180,9 @@ const TimelineProfiler: React.FC<{
             <ResponsiveContainer width="100%" height={300}>
               <ScatterChart
                 margin={{
-                  top: 50,
+                  top: 30, // Reduced top margin
                   right: 20,
-                  bottom: 20,
+                  bottom: 60, // Increased bottom margin to balance
                   left: 100,
                 }}
               >
