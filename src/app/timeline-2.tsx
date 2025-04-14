@@ -36,6 +36,8 @@ interface CustomShapeProps {
   width?: number;
   fill?: string;
   payload: ChartData;
+  xAxis: any;
+  yAxis: any;
 }
 
 interface CustomTooltipProps {
@@ -74,13 +76,25 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
 const CustomShape: React.FC<CustomShapeProps> = (props) => {
   const { cx, cy, payload, xAxis } = props;
   const eventHeight = 25;
+  const verticalSpacing = 40; // Space between different event types
+
   // Different colors based on event type and theme
   const color = payload.type === "render" ? "#4299e1" : "#ed64a6";
   const opacity = 0.8;
+
+  // Position render events lower and input events even lower
+  // This creates a vertical stacking effect
+  let yOffset = 0;
+  if (payload.type === "render") {
+    yOffset = 50; // Position render events in the middle
+  } else {
+    yOffset = 50 + verticalSpacing; // Position input events below render events
+  }
+
   return (
     <Rectangle
       x={cx}
-      y={cy - eventHeight / 2}
+      y={yOffset - eventHeight / 2} // Use fixed positions instead of cy
       width={xAxis.scale(payload.endTime) - xAxis.scale(payload.startTime)}
       height={eventHeight}
       fill={color}
@@ -164,7 +178,7 @@ const TimelineProfiler: React.FC<{
         <div className="flex-1 p-4 overflow-x-auto">
           {/* Fixed width container based on the calculated width */}
           <div style={{ minWidth: "100%" }}>
-            <ResponsiveContainer width="100%" height={400}>
+            <ResponsiveContainer width="100%" height={300}>
               <ScatterChart
                 margin={{
                   top: 50,
@@ -200,10 +214,13 @@ const TimelineProfiler: React.FC<{
                   type="number"
                   dataKey="y"
                   name="Track"
-                  domain={[0, 1]}
+                  // Change the domain to position events at center or bottom
+                  // For center: domain={[0, 2]} with events at y=1
+                  // For bottom: domain={[0, 4]} with events at y=1 (creates more space at top)
+                  domain={[0, 4]} // Adjust these values to move events down
                   tickCount={2}
                   hide={true} // Hide the Y-axis labels
-                  padding={{ top: 50, bottom: 50 }}
+                  padding={{ top: 20, bottom: 20 }} // Reduced top padding to move content down
                   stroke={darkMode ? "#e2e8f0" : "#4a5568"}
                 />
                 <Tooltip content={<CustomTooltip />} />
