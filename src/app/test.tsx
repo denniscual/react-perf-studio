@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useLayoutEffect, useSyncExternalStore } from "react";
+import React, { useEffect, useSyncExternalStore } from "react";
 import { simulateDelay } from "./util";
 import {
   Profiler,
@@ -9,7 +9,6 @@ import {
   ProfilerProvider,
   useProfilerProvider,
 } from "./profiler";
-// import Timeline from "./timeline";
 import Timeline from "./timeline-2";
 
 export default function TestList() {
@@ -20,9 +19,7 @@ export default function TestList() {
         <div className="flex flex-row space-x-6">
           {/* Left Pane - List Component */}
           <div className="w-3/10 border border-gray-200 rounded-md p-4">
-            <Profiler id="TestComponent">
-              <TestComponent />
-            </Profiler>
+            <TestComponent />
           </div>
           {/* Right Pane - Profiler View */}
           <div className="w-7/10 border border-gray-200 rounded-md p-4">
@@ -42,12 +39,6 @@ export default function TestList() {
 function TestComponent() {
   const [text, setText] = React.useState("");
   const deferredText = React.useDeferredValue(text);
-
-  simulateDelay(10);
-
-  useLayoutEffect(() => {
-    simulateDelay(25);
-  }, [text]);
 
   return (
     <div>
@@ -69,9 +60,7 @@ function TestComponent() {
         className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         placeholder="Type to trigger re-rendering..."
       />
-      <Profiler id="List">
-        <List text={deferredText} />
-      </Profiler>
+      <List text={deferredText} />
     </div>
   );
 }
@@ -115,11 +104,24 @@ function SlowItem({ text }: { text: string }) {
   );
 }
 
+const Foo = React.memo(function Foo() {
+  const [toggleFoo, setToggleFoo] = React.useState(false);
+  simulateDelay(200);
+
+  return (
+    <div>
+      <button
+        onClick={() => {
+          setToggleFoo(!toggleFoo);
+        }}
+      >
+        Update Foo Slow Component
+      </button>
+    </div>
+  );
+});
+
 // TODO:
-// - create RendersTimeline using our timeline codes. Check the React Profiler Timeline
-// for reference.
-// - create UserEventsTimeline.
-// - add replayer/rrweb
 // - profiling doesn't work in prod (build and then run pnpm start).
 function ProfilerTimeline() {
   const data = useSyncExternalStore(
@@ -127,8 +129,8 @@ function ProfilerTimeline() {
     profilerDataStore.getSnapshot,
     profilerDataStore.getSnapshot
   );
-
   const [inputEvents, setInputEvents] = React.useState<any>([]);
+  const [resourceEvents, setResourceEvents] = React.useState<any>([]);
   const { isProfilingStarted } = useProfilerProvider();
 
   const renderEvents: any[] = [];
@@ -147,63 +149,100 @@ function ProfilerTimeline() {
     renderEvents.push(event);
   });
 
-  useEffect(() => {
-    if (!isProfilingStarted) {
-      return;
-    }
+  useEffect(
+    function observeEventTiming() {
+      if (!isProfilingStarted) {
+        return;
+      }
 
-    const observer = new PerformanceObserver((list) => {
-      list.getEntries().forEach((entry, idx) => {
-        if (!["input", "click"].includes(entry.name)) {
-          return;
-        }
+      const observer = new PerformanceObserver((list) => {
+        list.getEntries().forEach((entry, idx) => {
+          if (!["input", "click"].includes(entry.name)) {
+            return;
+          }
 
-        const event = {
-          id: `${entry.name}-${idx}`,
-          type: "input",
-          name: entry.name,
-          startTime: entry.startTime,
-          endTime: entry.startTime + entry.duration,
-          duration: entry.duration,
-          depth: 1,
-        };
-        setInputEvents((prev) => [...prev, event]);
+          const event = {
+            id: `${entry.name}-${idx}`,
+            type: "input",
+            name: entry.name,
+            startTime: entry.startTime,
+            endTime: entry.startTime + entry.duration,
+            duration: entry.duration,
+            depth: 1,
+          };
+          setInputEvents((prev) => [...prev, event]);
+        });
       });
-    });
 
-    // Register the observer for events
-    observer.observe({
-      type: "event",
-      buffered: true,
-      // @ts-expect-error expect error
-      durationThreshold: 0,
-    });
+      // Register the observer for events
+      observer.observe({
+        type: "event",
+        buffered: true,
+        // @ts-expect-error expect error
+        durationThreshold: 0,
+      });
 
-    return () => observer.disconnect();
-  }, [isProfilingStarted]);
+      return () => observer.disconnect();
+    },
+    [isProfilingStarted]
+  );
+
+  useEffect(
+    function observeResourceTiming() {
+      if (!isProfilingStarted) {
+        return;
+      }
+
+      const observer = new PerformanceObserver((list) => {
+        list.getEntries().forEach((entry, idx) => {
+          console.log({ entry });
+          if (!(entry instanceof PerformanceResourceTiming)) return;
+          if (!isResourceIncludedInWhiteList(entry)) return;
+
+          const event = {
+            id: `${entry.name}-${idx}`,
+            type: "resource",
+            name: entry.name,
+            startTime: entry.fetchStart,
+            endTime: entry.responseEnd,
+            duration: entry.duration,
+            depth: 1,
+          };
+          setResourceEvents((prev) => [...prev, event]);
+        });
+      });
+
+      // Register the observer for events
+      observer.observe({
+        type: "resource",
+        buffered: true,
+      });
+
+      return () => observer.disconnect();
+    },
+    [isProfilingStarted]
+  );
 
   if (isProfilingStarted || data.profiles.length === 0) return null;
 
   return (
     <div>
-      <Timeline events={[...inputEvents, ...renderEvents]} />
+      <Timeline events={[...resourceEvents, ...inputEvents, ...renderEvents]} />
     </div>
   );
 }
 
-const Foo = React.memo(function Foo() {
-  const [toggleFoo, setToggleFoo] = React.useState(false);
-  simulateDelay(200);
+function isResourceIncludedInWhiteList(entry: PerformanceResourceTiming) {
+  const url = new URL(entry.name, window.location.origin);
+  const pathname = url.pathname.toLowerCase();
+  const isJson =
+    pathname.endsWith(".json") ||
+    entry.name.includes("/json") ||
+    entry.initiatorType === "fetch";
+  const isScript = pathname.endsWith(".js");
+  const isCss = pathname.endsWith(".css");
+  const isImg = pathname.endsWith(".img");
+  const isFetchInitiator = entry.initiatorType === "fetch";
 
-  return (
-    <div>
-      <button
-        onClick={() => {
-          setToggleFoo(!toggleFoo);
-        }}
-      >
-        Update Foo Slow Component
-      </button>
-    </div>
-  );
-});
+  return isJson || isScript || isCss || isImg || isFetchInitiator;
+}
