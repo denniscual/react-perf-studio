@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   ScatterChart,
   Scatter,
@@ -9,6 +9,7 @@ import {
   CartesianGrid,
   Rectangle,
   ResponsiveContainer,
+  ReferenceArea,
 } from "recharts";
 
 // Type definitions
@@ -74,7 +75,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
 
 // Custom shape for the events in the timeline
 const CustomShape: React.FC<CustomShapeProps> = (props) => {
-  const { cx, payload, xAxis } = props;
+  const { cx, cy, payload, xAxis } = props;
   const eventHeight = 25;
   const verticalSpacing = 40; // Space between different event types
 
@@ -142,10 +143,12 @@ const TimelineProfiler: React.FC<{
     };
   }, []);
 
-  // State for zoom functionality - removed refArea properties as we're no longer using area selection
+  // State for zoom functionality - adding back refArea properties for area selection
   const [zoomState, setZoomState] = useState({
     left: minTime,
     right: maxTime,
+    refAreaLeft: "",
+    refAreaRight: "",
   });
 
   // Reference to maintain the chart's current view domain
@@ -221,27 +224,47 @@ const TimelineProfiler: React.FC<{
     setZoomState({
       left: minTime,
       right: maxTime,
+      refAreaLeft: "",
+      refAreaRight: "",
     });
   };
 
-  // Mouse event handlers for zoom and pan
+  // Mouse event handlers for zoom (area selection) and pan (Command key)
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Only track mouse position for potential panning
     isDraggingRef.current = true;
     lastMousePositionRef.current = e.clientX;
+
+    const chartRect = chartContainerRef.current?.getBoundingClientRect();
+    if (!chartRect) return;
+
+    const mouseX = (e.clientX - chartRect.left) / chartRect.width;
+    const timeRange = zoomState.right - zoomState.left;
+
+    if (isCommandPressed) {
+      // Start panning if Command key is pressed
+      // No need to set refArea for panning
+    } else {
+      // Start zoom area selection if Command key is not pressed
+      const timePosition = zoomState.left + mouseX * timeRange;
+      setZoomState({
+        ...zoomState,
+        refAreaLeft: timePosition,
+        refAreaRight: "",
+      });
+    }
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!isDraggingRef.current) return;
 
-    // Only perform panning when Command key is pressed
+    const chartRect = chartContainerRef.current?.getBoundingClientRect();
+    if (!chartRect) return;
+
+    const mouseX = (e.clientX - chartRect.left) / chartRect.width;
+    const timeRange = zoomState.right - zoomState.left;
+
     if (isCommandPressed) {
-      const chartRect = chartContainerRef.current?.getBoundingClientRect();
-      if (!chartRect) return;
-
-      const timeRange = zoomState.right - zoomState.left;
-
-      // Calculate how much the mouse has moved in time units
+      // Handle panning when Command key is pressed
       const pixelDelta = e.clientX - lastMousePositionRef.current;
       const timeDelta = (pixelDelta / chartRect.width) * timeRange;
 
@@ -255,39 +278,103 @@ const TimelineProfiler: React.FC<{
           ...zoomState,
           left: minTime,
           right: minTime + timeRange,
+          refAreaLeft: "",
+          refAreaRight: "",
         });
       } else if (newRight === maxTime) {
         setZoomState({
           ...zoomState,
           left: maxTime - timeRange,
           right: maxTime,
+          refAreaLeft: "",
+          refAreaRight: "",
         });
       } else {
         setZoomState({
           ...zoomState,
           left: newLeft,
           right: newRight,
+          refAreaLeft: "",
+          refAreaRight: "",
         });
       }
 
       lastMousePositionRef.current = e.clientX;
+    } else if (zoomState.refAreaLeft !== "") {
+      // Handle zoom area selection when Command key is not pressed
+      const timePosition = zoomState.left + mouseX * timeRange;
+      setZoomState({
+        ...zoomState,
+        refAreaRight: timePosition,
+      });
     }
   };
 
   const handleMouseUp = () => {
+    if (!isDraggingRef.current) return;
     isDraggingRef.current = false;
+
+    // If we have a valid zoom area selection, zoom to that area
+    if (
+      !isCommandPressed &&
+      zoomState.refAreaLeft !== "" &&
+      zoomState.refAreaRight !== ""
+    ) {
+      handleZoom();
+    }
+  };
+
+  // Complete the zoom operation based on the selected area
+  const handleZoom = () => {
+    let { refAreaLeft, refAreaRight } = zoomState;
+
+    if (!refAreaLeft || !refAreaRight || refAreaLeft === refAreaRight) {
+      setZoomState({
+        ...zoomState,
+        refAreaLeft: "",
+        refAreaRight: "",
+      });
+      return;
+    }
+
+    // Ensure left is less than right
+    if (refAreaLeft > refAreaRight) {
+      [refAreaLeft, refAreaRight] = [refAreaRight, refAreaLeft];
+    }
+
+    // Add a minimum zoom width to prevent zooming in too far
+    const minZoomWidth = 10; // minimum 10ms
+    if (Math.abs(refAreaRight - refAreaLeft) < minZoomWidth) {
+      const midPoint = (refAreaLeft + refAreaRight) / 2;
+      refAreaLeft = midPoint - minZoomWidth / 2;
+      refAreaRight = midPoint + minZoomWidth / 2;
+    }
+
+    // Update the zoom state with new boundaries
+    setZoomState({
+      ...zoomState,
+      left: refAreaLeft,
+      right: refAreaRight,
+      refAreaLeft: "",
+      refAreaRight: "",
+    });
   };
 
   // Handle mouse leave to cleanup any ongoing operations
   const handleMouseLeave = () => {
     isDraggingRef.current = false;
+    setZoomState({
+      ...zoomState,
+      refAreaLeft: "",
+      refAreaRight: "",
+    });
   };
 
-  // Mouse wheel zoom functionality
+  // Mouse wheel zoom functionality with improved scroll prevention
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    // Prevent default scrolling behavior only within the chart area
+    // IMPORTANT: We need to prevent default here in the React handler
+    // This works together with the DOM event listener for full coverage
     e.preventDefault();
-    e.stopPropagation();
 
     // Don't zoom if Command key is pressed (reserved for panning)
     if (isCommandPressed) return;
@@ -319,10 +406,12 @@ const TimelineProfiler: React.FC<{
 
     // Update zoom state
     setZoomState({
-      ...zoomState,
       left: adjustedLeft,
       right: newRight,
     });
+
+    // Return false for extra measure (helps in some browsers)
+    return false;
   };
 
   // Dark mode classes
@@ -357,7 +446,7 @@ const TimelineProfiler: React.FC<{
             <span className="text-sm dark:text-gray-300 hidden sm:inline">
               {isCommandPressed
                 ? "Command key is pressed (Pan mode)"
-                : "Use mouse wheel to zoom | ⌘ + mouse drag to pan"}
+                : "Drag to select area | ⌘ + drag to pan"}
             </span>
           </div>
         </div>
@@ -370,8 +459,21 @@ const TimelineProfiler: React.FC<{
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseLeave}
+          // We still need the React onWheel handler for zooming,
+          // but we're also adding a direct DOM listener in useEffect for scroll prevention
           onWheel={handleWheel}
+          style={{
+            touchAction: "none", // Disable touch scrolling behaviors
+            msOverflowStyle: "none", // Hide scrollbar in IE/Edge
+            scrollbarWidth: "none", // Hide scrollbar in Firefox
+          }}
         >
+          {/* CSS to hide webkit scrollbars */}
+          <style jsx>{`
+            div::-webkit-scrollbar {
+              display: none;
+            }
+          `}</style>
           {/* Fixed width container based on the calculated width */}
           <div style={{ minWidth: "100%" }}>
             <ResponsiveContainer width="100%" height={300}>
@@ -421,7 +523,16 @@ const TimelineProfiler: React.FC<{
                 <Tooltip content={<CustomTooltip />} />
                 <Scatter data={chartData} shape={<CustomShape />} />
 
-                {/* No reference area for zoom selection since we removed that feature */}
+                {/* Reference area for zoom selection */}
+                {zoomState.refAreaLeft && zoomState.refAreaRight ? (
+                  <ReferenceArea
+                    x1={zoomState.refAreaLeft}
+                    x2={zoomState.refAreaRight}
+                    strokeOpacity={0.3}
+                    fill={darkMode ? "#4a5568" : "#e2e8f0"}
+                    fillOpacity={0.3}
+                  />
+                ) : null}
               </ScatterChart>
             </ResponsiveContainer>
           </div>
