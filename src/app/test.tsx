@@ -9,7 +9,7 @@ import {
   ProfilerProvider,
   useProfilerProvider,
 } from "./profiler";
-import Timeline from "./timeline-2";
+import Timeline from "./timeline";
 
 export default function TestList() {
   return (
