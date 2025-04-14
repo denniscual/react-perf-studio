@@ -46,6 +46,14 @@ interface CustomTooltipProps {
   payload?: Array<{ payload: ChartData }>;
 }
 
+// Define proper zoom state interface with correct types
+interface ZoomState {
+  left: number;
+  right: number;
+  refAreaLeft: number | null;
+  refAreaRight: number | null;
+}
+
 // Custom tooltip component
 const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
   if (active && payload && payload.length) {
@@ -75,7 +83,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
 
 // Custom shape for the events in the timeline
 const CustomShape: React.FC<CustomShapeProps> = (props) => {
-  const { cx, cy, payload, xAxis } = props;
+  const { cx, payload, xAxis } = props;
   const eventHeight = 25;
   const verticalSpacing = 40; // Space between different event types
 
@@ -115,12 +123,12 @@ const TimelineProfiler: React.FC<{
   const filter = "all";
   const [darkMode, setDarkMode] = useState<boolean>(false);
 
-  // State for zoom functionality - adding back refArea properties for area selection
-  const [zoomState, setZoomState] = useState({
+  // State for zoom functionality with correctly typed values
+  const [zoomState, setZoomState] = useState<ZoomState>({
     left: minTime,
     right: maxTime,
-    refAreaLeft: "",
-    refAreaRight: "",
+    refAreaLeft: null,
+    refAreaRight: null,
   });
 
   // State for tracking if Command key is pressed
@@ -224,8 +232,8 @@ const TimelineProfiler: React.FC<{
     setZoomState({
       left: minTime,
       right: maxTime,
-      refAreaLeft: "",
-      refAreaRight: "",
+      refAreaLeft: null,
+      refAreaRight: null,
     });
   };
 
@@ -249,7 +257,7 @@ const TimelineProfiler: React.FC<{
       setZoomState({
         ...zoomState,
         refAreaLeft: timePosition,
-        refAreaRight: "",
+        refAreaRight: null,
       });
     }
   };
@@ -278,29 +286,29 @@ const TimelineProfiler: React.FC<{
           ...zoomState,
           left: minTime,
           right: minTime + timeRange,
-          refAreaLeft: "",
-          refAreaRight: "",
+          refAreaLeft: null,
+          refAreaRight: null,
         });
       } else if (newRight === maxTime) {
         setZoomState({
           ...zoomState,
           left: maxTime - timeRange,
           right: maxTime,
-          refAreaLeft: "",
-          refAreaRight: "",
+          refAreaLeft: null,
+          refAreaRight: null,
         });
       } else {
         setZoomState({
           ...zoomState,
           left: newLeft,
           right: newRight,
-          refAreaLeft: "",
-          refAreaRight: "",
+          refAreaLeft: null,
+          refAreaRight: null,
         });
       }
 
       lastMousePositionRef.current = e.clientX;
-    } else if (zoomState.refAreaLeft !== "") {
+    } else if (zoomState.refAreaLeft !== null) {
       // Handle zoom area selection when Command key is not pressed
       const timePosition = zoomState.left + mouseX * timeRange;
       setZoomState({
@@ -317,8 +325,8 @@ const TimelineProfiler: React.FC<{
     // If we have a valid zoom area selection, zoom to that area
     if (
       !isCommandPressed &&
-      zoomState.refAreaLeft !== "" &&
-      zoomState.refAreaRight !== ""
+      zoomState.refAreaLeft !== null &&
+      zoomState.refAreaRight !== null
     ) {
       handleZoom();
     }
@@ -328,11 +336,15 @@ const TimelineProfiler: React.FC<{
   const handleZoom = () => {
     let { refAreaLeft, refAreaRight } = zoomState;
 
-    if (!refAreaLeft || !refAreaRight || refAreaLeft === refAreaRight) {
+    if (
+      refAreaLeft === null ||
+      refAreaRight === null ||
+      refAreaLeft === refAreaRight
+    ) {
       setZoomState({
         ...zoomState,
-        refAreaLeft: "",
-        refAreaRight: "",
+        refAreaLeft: null,
+        refAreaRight: null,
       });
       return;
     }
@@ -355,8 +367,8 @@ const TimelineProfiler: React.FC<{
       ...zoomState,
       left: refAreaLeft,
       right: refAreaRight,
-      refAreaLeft: "",
-      refAreaRight: "",
+      refAreaLeft: null,
+      refAreaRight: null,
     });
   };
 
@@ -365,8 +377,8 @@ const TimelineProfiler: React.FC<{
     isDraggingRef.current = false;
     setZoomState({
       ...zoomState,
-      refAreaLeft: "",
-      refAreaRight: "",
+      refAreaLeft: null,
+      refAreaRight: null,
     });
   };
 
@@ -417,12 +429,25 @@ const TimelineProfiler: React.FC<{
       return false;
     };
 
-    chartContainerRef.current?.addEventListener("wheel", handleWheel, {
-      passive: false,
-    });
+    const chartContainer = chartContainerRef.current;
+
+    if (!chartContainer) return;
+
+    chartContainer.addEventListener(
+      "wheel",
+      // @ts-expect-error event type is incompatible to react wheel event type.
+      handleWheel,
+      {
+        passive: false,
+      }
+    );
 
     return () => {
-      chartContainerRef.current?.removeEventListener("wheel", handleWheel);
+      chartContainer.removeEventListener(
+        "wheel",
+        // @ts-expect-error event type is incompatible to react wheel event type.
+        handleWheel
+      );
     };
   }, [isCommandPressed, maxTime, minTime, zoomState.left, zoomState.right]);
 
@@ -530,10 +555,17 @@ const TimelineProfiler: React.FC<{
                   stroke={darkMode ? "#e2e8f0" : "#4a5568"}
                 />
                 <Tooltip content={<CustomTooltip />} />
-                <Scatter data={chartData} shape={<CustomShape />} />
+                <Scatter
+                  data={chartData}
+                  shape={
+                    // @ts-expect-error prop are internally by Scatter.
+                    <CustomShape />
+                  }
+                />
 
-                {/* Reference area for zoom selection */}
-                {zoomState.refAreaLeft && zoomState.refAreaRight ? (
+                {/* Reference area for zoom selection - using proper null checks */}
+                {zoomState.refAreaLeft !== null &&
+                zoomState.refAreaRight !== null ? (
                   <ReferenceArea
                     x1={zoomState.refAreaLeft}
                     x2={zoomState.refAreaRight}
