@@ -105,14 +105,14 @@ const CustomShape: React.FC<CustomShapeProps> = (props) => {
 
   const opacity = 0.8;
 
-  // Adjusted to position events higher on the chart
+  // Adjusted to position events with new order: resource, input, render
   let yOffset = 0;
-  if (payload.type === "render") {
-    yOffset = 80; // Moved up from 120
+  if (payload.type === "resource") {
+    yOffset = 80; // Resource events at the top
   } else if (payload.type === "input") {
-    yOffset = 80 + verticalSpacing; // Input events below render events
-  } else if (payload.type === "resource") {
-    yOffset = 80 + verticalSpacing * 2; // Resource events at the bottom
+    yOffset = 80 + verticalSpacing; // Input events in the middle
+  } else if (payload.type === "render") {
+    yOffset = 80 + verticalSpacing * 2; // Render events at the bottom
   }
 
   return (
@@ -475,19 +475,19 @@ const TimelineProfiler: React.FC<{
       <div className="flex flex-col h-full dark:bg-gray-900 bg-gray-100">
         {/* Controls */}
         <div className="flex justify-between p-2 dark:bg-gray-800 dark:border-gray-700 bg-white border-b">
-          {/* Legend */}
+          {/* Legend - Reordered to match visual order */}
           <div className="flex items-center space-x-6">
             <div className="flex items-center">
-              <div className="w-4 h-4 mr-2 bg-blue-500 rounded"></div>
-              <span className="dark:text-white">Render Events</span>
+              <div className="w-4 h-4 mr-2 bg-green-500 rounded"></div>
+              <span className="dark:text-white">Resource Events</span>
             </div>
             <div className="flex items-center">
               <div className="w-4 h-4 mr-2 bg-pink-500 rounded"></div>
               <span className="dark:text-white">Input Events</span>
             </div>
             <div className="flex items-center">
-              <div className="w-4 h-4 mr-2 bg-green-500 rounded"></div>
-              <span className="dark:text-white">Resource Events</span>
+              <div className="w-4 h-4 mr-2 bg-blue-500 rounded"></div>
+              <span className="dark:text-white">Render Events</span>
             </div>
           </div>
 
