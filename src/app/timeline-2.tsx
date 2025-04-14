@@ -85,7 +85,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
 const CustomShape: React.FC<CustomShapeProps> = (props) => {
   const { cx, payload, xAxis } = props;
   const eventHeight = 25;
-  const verticalSpacing = 40; // Space between different event types
+  const verticalSpacing = 40;
 
   // Different colors based on event type and theme
   let color;
@@ -105,14 +105,14 @@ const CustomShape: React.FC<CustomShapeProps> = (props) => {
 
   const opacity = 0.8;
 
-  // Adjusted to position events in the center of the chart vertically
+  // Adjusted to position events higher on the chart
   let yOffset = 0;
   if (payload.type === "render") {
-    yOffset = 100; // Centered render events
+    yOffset = 80; // Moved up from 120
   } else if (payload.type === "input") {
-    yOffset = 100 + verticalSpacing; // Input events below render events
+    yOffset = 80 + verticalSpacing; // Input events below render events
   } else if (payload.type === "resource") {
-    yOffset = 100 + verticalSpacing * 2; // Resource events at the bottom
+    yOffset = 80 + verticalSpacing * 2; // Resource events at the bottom
   }
 
   return (
@@ -534,7 +534,7 @@ const TimelineProfiler: React.FC<{
               <ScatterChart
                 ref={chartRef}
                 margin={{
-                  top: 30,
+                  top: 20,
                   right: 20,
                   bottom: 60,
                   left: 100,
@@ -568,10 +568,10 @@ const TimelineProfiler: React.FC<{
                   type="number"
                   dataKey="y"
                   name="Track"
-                  domain={[0, 6]} // Increased to accommodate more event types
+                  domain={[0, 4]} // Adjusted for better vertical spacing
                   tickCount={2}
                   hide={true}
-                  padding={{ top: 20, bottom: 20 }}
+                  padding={{ top: 40, bottom: 40 }}
                   stroke={darkMode ? "#e2e8f0" : "#4a5568"}
                 />
                 <Tooltip content={<CustomTooltip />} />
