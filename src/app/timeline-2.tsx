@@ -160,7 +160,7 @@ const TimelineProfiler: React.FC<{
   const darkModeClasses = darkMode ? "dark" : "";
 
   return (
-    <div className={`flex flex-col h-[500px] ${darkModeClasses}`}>
+    <div className={`flex flex-col h-[400px] ${darkModeClasses}`}>
       <div className="flex flex-col h-full dark:bg-gray-900 bg-gray-100">
         {/* Legend */}
         <div className="flex justify-center space-x-8 p-2 dark:bg-gray-800 dark:border-gray-700 bg-white border-b">
