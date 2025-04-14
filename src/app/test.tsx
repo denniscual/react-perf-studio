@@ -9,7 +9,8 @@ import {
   ProfilerProvider,
   useProfilerProvider,
 } from "./profiler";
-import Timeline from "./timeline";
+// import Timeline from "./timeline";
+import Timeline from "./timeline-2";
 
 export default function TestList() {
   return (
@@ -131,34 +132,40 @@ function ProfilerTimeline() {
   const { isProfilingStarted } = useProfilerProvider();
 
   const renderEvents: any[] = [];
-  data.renders.forEach((render) => {
+  data.renders.forEach((render, idx) => {
     // if (render.actualDuration === 0) return;
 
     const event = {
-      type: render.id,
-      category: "Render",
-      y: 3,
-      start: render.startTime,
-      end: render.startTime + render.actualDuration,
-      color: "#9c27b0",
+      id: `${render.id}-${idx}`,
+      type: "render",
+      name: render.id,
+      startTime: render.startTime,
+      endTime: render.startTime + render.actualDuration,
+      duration: render.actualDuration,
+      depht: 0,
     };
     renderEvents.push(event);
   });
 
   useEffect(() => {
+    if (!isProfilingStarted) {
+      return;
+    }
+
     const observer = new PerformanceObserver((list) => {
-      list.getEntries().forEach((entry) => {
+      list.getEntries().forEach((entry, idx) => {
         if (!["input", "click"].includes(entry.name)) {
           return;
         }
 
         const event = {
-          type: entry.name,
-          category: "Input",
-          y: 2,
-          start: entry.startTime,
-          end: entry.startTime + entry.duration,
-          color: "#4dabf5",
+          id: `${entry.name}-${idx}`,
+          type: "input",
+          name: entry.name,
+          startTime: entry.startTime,
+          endTime: entry.startTime + entry.duration,
+          duration: entry.duration,
+          depth: 1,
         };
         setInputEvents((prev) => [...prev, event]);
       });
@@ -173,15 +180,13 @@ function ProfilerTimeline() {
     });
 
     return () => observer.disconnect();
-  }, []);
+  }, [isProfilingStarted]);
 
   if (isProfilingStarted || data.profiles.length === 0) return null;
 
-  console.log({ inputEvents });
-
   return (
     <div>
-      <Timeline renders={renderEvents} inputs={inputEvents} />{" "}
+      <Timeline events={[...inputEvents, ...renderEvents]} />
     </div>
   );
 }
