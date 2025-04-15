@@ -144,6 +144,7 @@ const TimelineProfiler: React.FC<{
   const maxTime = Math.max(...times);
   const filter = "all";
   const [darkMode, setDarkMode] = useState<boolean>(false);
+  const [containerWidth, setContainerWidth] = useState<number>(0);
 
   // State for zoom functionality with correctly typed values
   const [zoomState, setZoomState] = useState<ZoomState>({
@@ -189,6 +190,25 @@ const TimelineProfiler: React.FC<{
   const lastMousePositionRef = useRef(0);
   const chartContainerRef = useRef<HTMLDivElement>(null);
 
+  // Update container width on resize
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (chartContainerRef.current) {
+        setContainerWidth(chartContainerRef.current.clientWidth);
+      }
+    };
+
+    // Initial measurement
+    updateDimensions();
+
+    // Listen for resize events
+    window.addEventListener("resize", updateDimensions);
+
+    return () => {
+      window.removeEventListener("resize", updateDimensions);
+    };
+  }, []);
+
   // Prevent text selection during drag operations
   useEffect(() => {
     const preventSelection = (e: Event) => {
@@ -204,8 +224,8 @@ const TimelineProfiler: React.FC<{
   }, []);
 
   // Generate custom ticks at intervals appropriate for the current zoom level
+  // with a maximum number of ticks based on container width
   const generateCustomTicks = () => {
-    const ticks = [];
     const range = zoomState.right - zoomState.left;
 
     // Determine the tick interval based on the zoom level
@@ -223,9 +243,46 @@ const TimelineProfiler: React.FC<{
     // Calculate tick start position to align with round numbers
     const firstTick = Math.ceil(zoomState.left / tickInterval) * tickInterval;
 
+    // Calculate how many ticks would be generated
+    const numPotentialTicks =
+      Math.ceil((zoomState.right - firstTick) / tickInterval) + 1;
+
+    // Calculate max ticks based on container width
+    // Assume each tick label needs ~60px of space
+    const minTickSpacing = 60;
+    const effectiveWidth = containerWidth - 120; // Account for margins
+    const maxTicks = Math.max(2, Math.floor(effectiveWidth / minTickSpacing));
+
+    // If we have more potential ticks than max allowed, adjust the interval
+    if (numPotentialTicks > maxTicks && maxTicks > 0) {
+      // Calculate new interval to fit max ticks
+      const newInterval = Math.ceil(range / (maxTicks - 1));
+      // Round to a nice number
+      tickInterval = Math.ceil(newInterval / 10) * 10;
+    }
+
     // Generate ticks from that point forward
+    const ticks = [];
     for (let tick = firstTick; tick <= zoomState.right; tick += tickInterval) {
       ticks.push(tick);
+    }
+
+    // Enforce max ticks if we still have too many
+    if (ticks.length > maxTicks && maxTicks > 0) {
+      // Keep the first and last ticks, and evenly distribute the rest
+      const step = Math.ceil(ticks.length / maxTicks);
+      const newTicks = [ticks[0]];
+
+      for (let i = step; i < ticks.length - 1; i += step) {
+        newTicks.push(ticks[i]);
+      }
+
+      // Always include the last tick if it's not already included
+      if (newTicks[newTicks.length - 1] !== ticks[ticks.length - 1]) {
+        newTicks.push(ticks[ticks.length - 1]);
+      }
+
+      return newTicks;
     }
 
     return ticks;
@@ -470,6 +527,19 @@ const TimelineProfiler: React.FC<{
   // Dark mode classes
   const darkModeClasses = darkMode ? "dark" : "";
 
+  // Format time label based on value
+  const formatTimeLabel = (time: number) => {
+    if (time < 1000) {
+      return `${time.toFixed(0)}ms`;
+    } else if (time < 60000) {
+      return `${(time / 1000).toFixed(2)}s`;
+    } else {
+      const minutes = Math.floor(time / 60000);
+      const seconds = ((time % 60000) / 1000).toFixed(1);
+      return `${minutes}m${seconds}s`;
+    }
+  };
+
   return (
     <div className={`flex flex-col h-[400px] ${darkModeClasses}`}>
       <div className="flex flex-col h-full dark:bg-gray-900 bg-gray-100">
@@ -551,14 +621,10 @@ const TimelineProfiler: React.FC<{
                   domain={[zoomState.left, zoomState.right]}
                   ticks={customTicks}
                   allowDataOverflow
-                  interval={0} // Force render all ticks
-                  tickFormatter={(tick) => {
-                    return tick < 1000
-                      ? `${tick.toFixed(0)}ms`
-                      : `${(tick / 1000).toFixed(2)}s`;
-                  }}
+                  interval={0} // Force render all ticks in our limited set
+                  tickFormatter={formatTimeLabel}
                   label={{
-                    value: "Time (ms)",
+                    value: "Time",
                     position: "bottom",
                     offset: 10,
                     fill: darkMode ? "#e2e8f0" : "#4a5568",
