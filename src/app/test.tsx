@@ -11,6 +11,7 @@ import {
 } from "./profiler";
 import Timeline from "./timeline";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import RRWebPlayer from "./replayer";
 
 export default function TestList() {
   return (
@@ -20,7 +21,8 @@ export default function TestList() {
         <div className="flex flex-row space-x-6">
           {/* Left Pane - List Component */}
           <div className="w-3/10 border border-gray-200 rounded-md p-4">
-            <TestComponent />
+            {/* <TestComponent /> */}
+            <RRWebPlayer />
           </div>
           {/* Right Pane - Profiler View */}
           <div className="w-7/10 border border-gray-200 rounded-md p-4">
