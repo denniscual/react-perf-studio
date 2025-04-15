@@ -197,7 +197,6 @@ function ProfilerTimeline() {
 
       const observer = new PerformanceObserver((list) => {
         list.getEntries().forEach((entry, idx) => {
-          console.log({ entry });
           if (!(entry instanceof PerformanceResourceTiming)) return;
           if (!isResourceIncludedInWhiteList(entry)) return;
 
