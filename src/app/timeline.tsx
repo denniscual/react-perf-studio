@@ -215,9 +215,9 @@ const TimelineProfiler: React.FC<{
     } else if (range <= 500) {
       tickInterval = 50; // Medium zoom
     } else if (range <= 2000) {
-      tickInterval = 100; // Less zoomed
+      tickInterval = 200; // Less zoomed
     } else {
-      tickInterval = 200; // Overview
+      tickInterval = 500; // Overview
     }
 
     // Calculate tick start position to align with round numbers
@@ -470,9 +470,6 @@ const TimelineProfiler: React.FC<{
   // Dark mode classes
   const darkModeClasses = darkMode ? "dark" : "";
 
-  // DEBUG: log current timeline range
-  // console.log("Timeline range:", zoomState.left, "to", zoomState.right, "ticks:", customTicks);
-
   return (
     <div className={`flex flex-col h-[400px] ${darkModeClasses}`}>
       <div className="flex flex-col h-full dark:bg-gray-900 bg-gray-100">
@@ -556,8 +553,9 @@ const TimelineProfiler: React.FC<{
                   allowDataOverflow
                   interval={0} // Force render all ticks
                   tickFormatter={(tick) => {
-                    // Show absolute time in milliseconds
-                    return `${tick.toFixed(0)}ms`;
+                    return tick < 1000
+                      ? `${tick.toFixed(0)}ms`
+                      : `${(tick / 1000).toFixed(2)}s`;
                   }}
                   label={{
                     value: "Time (ms)",
