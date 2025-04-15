@@ -17,7 +17,7 @@ import {
 } from "recharts";
 import { formatMilliseconds } from "./util";
 
-const ProfilerProviderContext = React.createContext<{
+export const ProfilerProviderContext = React.createContext<{
   isProfilingStarted: boolean;
   setIsProfilingStarted: React.Dispatch<React.SetStateAction<boolean>>;
 } | null>(null);
