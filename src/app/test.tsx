@@ -34,9 +34,16 @@ export default function TestList() {
                   <TabsTrigger value="timeline">Timeline</TabsTrigger>
                   <TabsTrigger value="commits-graph">Commits Graph</TabsTrigger>
                 </TabsList>
-                <TabsContent value="timeline">
-                  <ProfilerTimeline />
-                </TabsContent>
+                <ProfilerTimelineEvents>
+                  {({ events, setEvents }) => (
+                    <TabsContent value="timeline">
+                      <ProfilerTimeline
+                        events={events}
+                        onTriggerEvent={setEvents}
+                      />
+                    </TabsContent>
+                  )}
+                </ProfilerTimelineEvents>
                 <TabsContent value="commits-graph">
                   <ProfilerGraph />
                 </TabsContent>
@@ -134,22 +141,31 @@ const Foo = React.memo(function Foo() {
   );
 });
 
-// TODO:
-// - profiling doesn't work in prod (build and then run pnpm start).
-function ProfilerTimeline() {
+function ProfilerTimelineEvents({
+  children,
+}: {
+  children: (props: any) => React.ReactNode;
+}) {
+  const [events, setEvents] = React.useState<any>([]);
+  return children({ events, setEvents });
+}
+
+function ProfilerTimeline({
+  events,
+  onTriggerEvent,
+}: {
+  events: any;
+  onTriggerEvent: any;
+}) {
   const data = useSyncExternalStore(
     profilerDataStore.subscribe,
     profilerDataStore.getSnapshot,
     profilerDataStore.getSnapshot
   );
-  const [inputEvents, setInputEvents] = React.useState<any>([]);
-  const [resourceEvents, setResourceEvents] = React.useState<any>([]);
   const { isProfilingStarted } = useProfilerProvider();
 
   const renderEvents: any[] = [];
   data.renders.forEach((render, idx) => {
-    // if (render.actualDuration === 0) return;
-
     const event = {
       id: `${render.id}-${idx}`,
       type: "render",
@@ -183,7 +199,7 @@ function ProfilerTimeline() {
             duration: entry.duration,
             depth: 1,
           };
-          setInputEvents((prev) => [...prev, event]);
+          onTriggerEvent((prev) => [...prev, event]);
         });
       });
 
@@ -197,7 +213,7 @@ function ProfilerTimeline() {
 
       return () => observer.disconnect();
     },
-    [isProfilingStarted]
+    [isProfilingStarted, onTriggerEvent]
   );
 
   useEffect(
@@ -220,7 +236,7 @@ function ProfilerTimeline() {
             duration: entry.duration,
             depth: 1,
           };
-          setResourceEvents((prev) => [...prev, event]);
+          onTriggerEvent((prev) => [...prev, event]);
         });
       });
 
@@ -232,14 +248,14 @@ function ProfilerTimeline() {
 
       return () => observer.disconnect();
     },
-    [isProfilingStarted]
+    [isProfilingStarted, onTriggerEvent]
   );
 
   if (isProfilingStarted || data.profiles.length === 0) return null;
 
   return (
     <div>
-      <Timeline events={[...resourceEvents, ...inputEvents, ...renderEvents]} />
+      <Timeline events={[...events, ...renderEvents]} />
     </div>
   );
 }
