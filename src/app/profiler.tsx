@@ -4,6 +4,8 @@ import React, {
   useSyncExternalStore,
   useRef,
   useCallback,
+  useEffect,
+  useInsertionEffect,
 } from "react";
 import {
   BarChart,
@@ -16,6 +18,7 @@ import {
   Cell,
 } from "recharts";
 import { formatMilliseconds } from "./util";
+import { flushSync } from "react-dom";
 
 export const ProfilerProviderContext = React.createContext<{
   isProfilingStarted: boolean;
@@ -75,7 +78,9 @@ const durationStatusLabels: Record<DurationStatus, string> = {
   verySlow: "Very Slow (200ms+)",
 };
 
-export const ProfilerControls = React.memo(function ProfilerControls() {
+export const ProfilerControls = React.memo(function ProfilerControls({
+  replayer,
+}: any) {
   const { isProfilingStarted, setIsProfilingStarted } = useProfilerProvider();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -97,12 +102,39 @@ export const ProfilerControls = React.memo(function ProfilerControls() {
   const handleToggleProfiling = React.useCallback(() => {
     const newState = !isProfilingStarted;
     setIsProfilingStarted(newState);
+
     if (newState) {
       profilerDataStore.startProfiling();
+      // record rweb
+      replayer.startRecording();
     } else {
       profilerDataStore.stopProfiling();
+      // stop rweb recording
+      replayer.stopRecording();
+      // play recording. put it into timeout callback to make sure
+      // the needed state for playing recording are all set.
+      // flushSync is not working.
+      setTimeout(() => {
+        replayer.playRecording();
+      }, 0);
     }
-  }, [isProfilingStarted, setIsProfilingStarted]);
+  }, [isProfilingStarted, setIsProfilingStarted, replayer]);
+
+  const enableProfilingOnMountRef = useRef<any>(null);
+
+  useInsertionEffect(() => {
+    enableProfilingOnMountRef.current = () => {
+      handleToggleProfiling();
+    };
+  });
+
+  const enableProfilingOnMount = useCallback(() => {
+    enableProfilingOnMountRef.current();
+  }, []);
+
+  useEffect(() => {
+    enableProfilingOnMount();
+  }, [enableProfilingOnMount]);
 
   const handleResetData = React.useCallback(() => {
     profilerDataStore.clearData();

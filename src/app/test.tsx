@@ -11,7 +11,7 @@ import {
 } from "./profiler";
 import Timeline from "./timeline";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import RRWebPlayer from "./replayer";
+import SessionRecorder from "./replayer";
 
 export default function TestList() {
   return (
@@ -21,35 +21,43 @@ export default function TestList() {
         <div className="flex flex-row space-x-6">
           {/* Left Pane - List Component */}
           <div className="w-3/10 border border-gray-200 rounded-md p-4">
-            {/* <TestComponent /> */}
-            <RRWebPlayer />
+            <TestComponent />
           </div>
           {/* Right Pane - Profiler View */}
           <div className="w-7/10 border border-gray-200 rounded-md p-4">
             <h2 className="text-lg font-bold mb-6">Profiler</h2>
             <div className="space-y-5">
-              <Profiler id="ProfilerControls">
-                <ProfilerControls />
-              </Profiler>
-              <Tabs defaultValue="timeline" className="w-full">
-                <TabsList>
-                  <TabsTrigger value="timeline">Timeline</TabsTrigger>
-                  <TabsTrigger value="commits-graph">Commits Graph</TabsTrigger>
-                </TabsList>
-                <ProfilerTimelineEvents>
-                  {({ events, setEvents }) => (
-                    <TabsContent value="timeline">
-                      <ProfilerTimeline
-                        events={events}
-                        onTriggerEvent={setEvents}
-                      />
-                    </TabsContent>
-                  )}
-                </ProfilerTimelineEvents>
-                <TabsContent value="commits-graph">
-                  <ProfilerGraph />
-                </TabsContent>
-              </Tabs>
+              <SessionRecorder>
+                {(replayer) => (
+                  <>
+                    <Profiler id="ProfilerControls">
+                      <ProfilerControls replayer={replayer} />
+                    </Profiler>
+                    <Tabs defaultValue="timeline" className="w-full">
+                      <TabsList>
+                        <TabsTrigger value="timeline">Timeline</TabsTrigger>
+                        <TabsTrigger value="commits-graph">
+                          Commits Graph
+                        </TabsTrigger>
+                      </TabsList>
+                      <ProfilerTimelineEvents>
+                        {({ events, setEvents }) => (
+                          <TabsContent value="timeline">
+                            <ProfilerTimeline
+                              events={events}
+                              onTriggerEvent={setEvents}
+                              replayer={replayer}
+                            />
+                          </TabsContent>
+                        )}
+                      </ProfilerTimelineEvents>
+                      <TabsContent value="commits-graph">
+                        <ProfilerGraph />
+                      </TabsContent>
+                    </Tabs>
+                  </>
+                )}
+              </SessionRecorder>
             </div>
           </div>
         </div>
@@ -155,9 +163,11 @@ function ProfilerTimelineEvents({
 function ProfilerTimeline({
   events,
   onTriggerEvent,
+  replayer,
 }: {
   events: any;
   onTriggerEvent: any;
+  replayer: any;
 }) {
   const data = useSyncExternalStore(
     profilerDataStore.subscribe,
@@ -253,11 +263,15 @@ function ProfilerTimeline({
     [isProfilingStarted, onTriggerEvent]
   );
 
-  if (isProfilingStarted || data.profiles.length === 0) return null;
-
   return (
-    <div>
-      <Timeline events={[...events, ...renderEvents]} />
+    <div className="flex flex-col space-y-4 w-full">
+      {!isProfilingStarted && data.profiles.length > 0 && (
+        <Timeline events={[...events, ...renderEvents]} />
+      )}
+      <div
+        ref={replayer.playerRef}
+        className="w-full h-auto border border-gray-300 rounded-lg bg-white shadow"
+      />
     </div>
   );
 }
