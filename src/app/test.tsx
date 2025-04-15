@@ -10,6 +10,7 @@ import {
   useProfilerProvider,
 } from "./profiler";
 import Timeline from "./timeline";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function TestList() {
   return (
@@ -28,8 +29,18 @@ export default function TestList() {
               <Profiler id="ProfilerControls">
                 <ProfilerControls />
               </Profiler>
-              <ProfilerTimeline />
-              <ProfilerGraph />
+              <Tabs defaultValue="commits-graph" className="w-full">
+                <TabsList>
+                  <TabsTrigger value="commits-graph">Commits Graph</TabsTrigger>
+                  <TabsTrigger value="timeline">Timeline</TabsTrigger>
+                </TabsList>
+                <TabsContent value="commits-graph">
+                  <ProfilerGraph />
+                </TabsContent>
+                <TabsContent value="timeline">
+                  <ProfilerTimeline />
+                </TabsContent>
+              </Tabs>
             </div>
           </div>
         </div>
