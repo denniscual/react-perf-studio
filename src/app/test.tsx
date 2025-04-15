@@ -29,16 +29,16 @@ export default function TestList() {
               <Profiler id="ProfilerControls">
                 <ProfilerControls />
               </Profiler>
-              <Tabs defaultValue="commits-graph" className="w-full">
+              <Tabs defaultValue="timeline" className="w-full">
                 <TabsList>
-                  <TabsTrigger value="commits-graph">Commits Graph</TabsTrigger>
                   <TabsTrigger value="timeline">Timeline</TabsTrigger>
+                  <TabsTrigger value="commits-graph">Commits Graph</TabsTrigger>
                 </TabsList>
-                <TabsContent value="commits-graph">
-                  <ProfilerGraph />
-                </TabsContent>
                 <TabsContent value="timeline">
                   <ProfilerTimeline />
+                </TabsContent>
+                <TabsContent value="commits-graph">
+                  <ProfilerGraph />
                 </TabsContent>
               </Tabs>
             </div>
