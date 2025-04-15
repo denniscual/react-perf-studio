@@ -39,7 +39,6 @@ interface CustomShapeProps {
   payload: ChartData;
   xAxis: any;
   yAxis: any;
-  duration: number;
 }
 
 interface CustomTooltipProps {
@@ -81,11 +80,18 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
   return null;
 };
 
-// Custom shape for the events in the timeline
+// Custom shape for the events in the timeline with correct alignment
 const CustomShape: React.FC<CustomShapeProps> = (props) => {
-  const { cx, payload, duration } = props;
+  const { payload, xAxis } = props;
   const eventHeight = 25;
   const verticalSpacing = 40;
+
+  // Use the exact time values for positioning
+  const startX = xAxis.scale(payload.startTime);
+  const endX = xAxis.scale(payload.endTime);
+
+  // Ensure the width is accurate
+  const width = Math.max(endX - startX, 1); // Ensure minimum 1px width for visibility
 
   // Different colors based on event type and theme
   let color;
@@ -117,9 +123,9 @@ const CustomShape: React.FC<CustomShapeProps> = (props) => {
 
   return (
     <Rectangle
-      x={cx}
-      y={yOffset - eventHeight / 2} // Use fixed positions instead of cy
-      width={duration}
+      x={startX}
+      y={yOffset - eventHeight / 2}
+      width={width}
       height={eventHeight}
       fill={color}
       fillOpacity={opacity}
@@ -201,15 +207,25 @@ const TimelineProfiler: React.FC<{
   const generateCustomTicks = () => {
     const ticks = [];
     const range = zoomState.right - zoomState.left;
-    // Adapt tick interval based on zoom level
-    const tickInterval = range <= 200 ? 10 : range <= 500 ? 25 : 50;
-    const numTicks = Math.ceil(range / tickInterval) + 1;
 
-    for (let i = 0; i < numTicks; i++) {
-      const tick = zoomState.left + i * tickInterval;
-      if (tick <= zoomState.right) {
-        ticks.push(tick);
-      }
+    // Determine the tick interval based on the zoom level
+    let tickInterval;
+    if (range <= 100) {
+      tickInterval = 10; // Very zoomed in
+    } else if (range <= 500) {
+      tickInterval = 50; // Medium zoom
+    } else if (range <= 2000) {
+      tickInterval = 100; // Less zoomed
+    } else {
+      tickInterval = 200; // Overview
+    }
+
+    // Calculate tick start position to align with round numbers
+    const firstTick = Math.ceil(zoomState.left / tickInterval) * tickInterval;
+
+    // Generate ticks from that point forward
+    for (let tick = firstTick; tick <= zoomState.right; tick += tickInterval) {
+      ticks.push(tick);
     }
 
     return ticks;
@@ -237,10 +253,10 @@ const TimelineProfiler: React.FC<{
   // Prepare data for the chart
   const chartData: ChartData[] = filteredEvents.map((event) => ({
     ...event,
-    x: event.startTime,
+    x: event.startTime, // Use startTime for the x coordinate
     y: event.depth,
     z: event.endTime - event.startTime,
-    baseTime: minTime, // Add baseTime to each data point for tooltip access
+    baseTime: minTime,
   }));
 
   // Reset zoom
@@ -401,52 +417,36 @@ const TimelineProfiler: React.FC<{
   useEffect(() => {
     // Mouse wheel zoom functionality with improved scroll prevention
     const handleWheel: WheelEventHandler<HTMLDivElement> = (e) => {
-      // IMPORTANT: We need to prevent default here in the React handler
-      // This works together with the DOM event listener for full coverage
       e.preventDefault();
       e.stopPropagation();
 
-      // Don't zoom if Command key is pressed (reserved for panning)
       if (isCommandPressed) return;
 
-      // Get current visible range
       const range = zoomState.right - zoomState.left;
-
-      // Calculate zoom factor based on wheel delta
-      // Negative delta means zoom in, positive means zoom out
       const zoomFactor = e.deltaY < 0 ? 0.8 : 1.2;
 
-      // Calculate the point on the timeline where the mouse is
       const chartRect = chartContainerRef.current?.getBoundingClientRect();
       if (!chartRect) return;
 
-      // Get the relative mouse position within the chart container
       const mouseX = (e.clientX - chartRect.left) / chartRect.width;
-
-      // Calculate the time point under the mouse
       const mouseTimePosition = zoomState.left + mouseX * range;
 
-      // Calculate new range and boundaries, keeping the mouse position fixed
       const newRange = Math.min(maxTime - minTime, range * zoomFactor);
       const newLeft = Math.max(minTime, mouseTimePosition - mouseX * newRange);
       const newRight = Math.min(maxTime, newLeft + newRange);
 
-      // Adjust left if right exceeds maximum
       const adjustedLeft = newRight === maxTime ? newRight - newRange : newLeft;
 
-      // Update zoom state
       setZoomState((prev) => ({
         ...prev,
         left: adjustedLeft,
         right: newRight,
       }));
 
-      // Return false for extra measure (helps in some browsers)
       return false;
     };
 
     const chartContainer = chartContainerRef.current;
-
     if (!chartContainer) return;
 
     chartContainer.addEventListener(
@@ -469,6 +469,9 @@ const TimelineProfiler: React.FC<{
 
   // Dark mode classes
   const darkModeClasses = darkMode ? "dark" : "";
+
+  // DEBUG: log current timeline range
+  // console.log("Timeline range:", zoomState.left, "to", zoomState.right, "ticks:", customTicks);
 
   return (
     <div className={`flex flex-col h-[400px] ${darkModeClasses}`}>
@@ -551,9 +554,10 @@ const TimelineProfiler: React.FC<{
                   domain={[zoomState.left, zoomState.right]}
                   ticks={customTicks}
                   allowDataOverflow
+                  interval={0} // Force render all ticks
                   tickFormatter={(tick) => {
-                    // Show relative time in milliseconds from start
-                    return `${((tick - minTime) / 1).toFixed(0)}ms`;
+                    // Show absolute time in milliseconds
+                    return `${tick.toFixed(0)}ms`;
                   }}
                   label={{
                     value: "Time (ms)",
@@ -578,7 +582,7 @@ const TimelineProfiler: React.FC<{
                 <Scatter
                   data={chartData}
                   shape={
-                    // @ts-expect-error prop are internally by Scatter.
+                    // @ts-expect-error props are handled internally by Scatter
                     <CustomShape />
                   }
                 />
