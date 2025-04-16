@@ -647,7 +647,7 @@ const TimelineProfiler: React.FC<{
                   padding={{ top: 40, bottom: 40 }}
                   stroke={darkMode ? "#e2e8f0" : "#4a5568"}
                 />
-                {/* <Tooltip content={<CustomTooltip />} /> */}
+                <Tooltip content={<CustomTooltip />} />
                 <Scatter
                   data={chartData}
                   shape={
