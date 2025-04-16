@@ -168,11 +168,11 @@ const SessionRecorder = (props: SessionRecorderProps) => {
   // Function to jump to a specific event by index
   const jumpToTime = useCallback(
     (time: number) => {
-      console.log({ time });
       if (!playerInstance) {
         return;
       }
       playerInstance.goto(time);
+      playerInstance.pause();
     },
     [playerInstance]
   );
