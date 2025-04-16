@@ -33,7 +33,6 @@ const SessionRecorder = (props: SessionRecorderProps) => {
   const [playerInstance, setPlayerInstance] = useState<any>(null);
   const [timeOffset, setTimeOffset] = useState(initialTimeOffset);
 
-  const rrwebPlayerRef = useRef<any>(null);
   const playerRef = useRef<HTMLDivElement>(null);
   const eventsRef = useRef<any[]>([]);
   const stopRecordingRef = useRef<(() => void) | null>(null);
@@ -154,10 +153,8 @@ const SessionRecorder = (props: SessionRecorderProps) => {
             autoPlay: true,
           },
         });
-
-        rrwebPlayerRef.current = player;
-
         setPlayerInstance(player);
+        player.pause(); // pause immediately after creation
       } catch (err) {
         console.error("Error creating player:", err);
       }
@@ -172,10 +169,10 @@ const SessionRecorder = (props: SessionRecorderProps) => {
   const jumpToTime = useCallback(
     (time: number) => {
       console.log({ time });
-      if (!playerInstance || !rrwebPlayerRef.current) {
+      if (!playerInstance) {
         return;
       }
-      rrwebPlayerRef.current?.goto(time);
+      playerInstance.goto(time);
     },
     [playerInstance]
   );
