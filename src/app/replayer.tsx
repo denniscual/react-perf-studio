@@ -149,7 +149,7 @@ const SessionRecorder = (props: SessionRecorderProps) => {
           target: playerRef.current,
           props: {
             events: processedEvents,
-            width: 900,
+            width: 710,
             showController: true,
             autoPlay: true,
           },
