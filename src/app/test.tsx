@@ -266,7 +266,7 @@ function ProfilerTimeline({
   return (
     <div className="flex flex-col space-y-4 w-full">
       {!isProfilingStarted && data.profiles.length > 0 && (
-        <Timeline events={[...events, ...renderEvents]} />
+        <Timeline events={[...events, ...renderEvents]} replayer={replayer} />
       )}
       <div
         ref={replayer.playerRef}
