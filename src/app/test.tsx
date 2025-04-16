@@ -16,52 +16,56 @@ import SessionRecorder from "./replayer";
 export default function TestList() {
   return (
     <ProfilerProvider>
-      <div className="space-y-4 p-4">
-        {/* Horizontal Layout */}
-        <div className="flex flex-row space-x-6">
-          {/* Left Pane - List Component */}
-          <div className="w-3/10 border border-gray-200 rounded-md p-4">
-            <TestComponent />
-          </div>
-          {/* Right Pane - Profiler View */}
-          <div className="w-7/10 border border-gray-200 rounded-md p-4">
-            <h2 className="text-lg font-bold mb-6">Profiler</h2>
-            <div className="space-y-5">
-              <SessionRecorder>
-                {(replayer) => (
-                  <>
-                    <Profiler id="ProfilerControls">
-                      <ProfilerControls replayer={replayer} />
-                    </Profiler>
-                    <Tabs defaultValue="timeline" className="w-full">
-                      <TabsList>
-                        <TabsTrigger value="timeline">Timeline</TabsTrigger>
-                        <TabsTrigger value="commits-graph">
-                          Commits Graph
-                        </TabsTrigger>
-                      </TabsList>
-                      <ProfilerTimelineEvents>
-                        {({ events, setEvents }) => (
-                          <TabsContent value="timeline">
-                            <ProfilerTimeline
-                              events={events}
-                              onTriggerEvent={setEvents}
-                              replayer={replayer}
-                            />
-                          </TabsContent>
-                        )}
-                      </ProfilerTimelineEvents>
-                      <TabsContent value="commits-graph">
-                        <ProfilerGraph />
+      <SessionRecorder>
+        {(replayer) => (
+          <div className="space-y-4 p-4">
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-lg font-bold mb-6">Profiler</h2>
+                <Profiler id="ProfilerControls">
+                  <ProfilerControls replayer={replayer} />
+                </Profiler>
+              </div>
+              <div className="w-1/2">
+                <TestComponent />
+              </div>
+            </div>
+            <div className="flex flex-row space-x-6">
+              <div className="w-1/2">
+                <div ref={replayer.playerRef}>
+                  {replayer.events.length > 0 && (
+                    <div className="w-full h-auto border border-gray-300 rounded-lg bg-white shadow" />
+                  )}
+                </div>
+              </div>
+              <div className="w-1/2">
+                <Tabs defaultValue="timeline" className="w-full">
+                  <TabsList>
+                    <TabsTrigger value="timeline">Timeline</TabsTrigger>
+                    <TabsTrigger value="commits-graph">
+                      Commits Graph
+                    </TabsTrigger>
+                  </TabsList>
+                  <ProfilerTimelineEvents>
+                    {({ events, setEvents }) => (
+                      <TabsContent value="timeline">
+                        <ProfilerTimeline
+                          events={events}
+                          onTriggerEvent={setEvents}
+                          replayer={replayer}
+                        />
                       </TabsContent>
-                    </Tabs>
-                  </>
-                )}
-              </SessionRecorder>
+                    )}
+                  </ProfilerTimelineEvents>
+                  <TabsContent value="commits-graph">
+                    <ProfilerGraph />
+                  </TabsContent>
+                </Tabs>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+        )}
+      </SessionRecorder>
     </ProfilerProvider>
   );
 }
@@ -72,9 +76,6 @@ function TestComponent() {
 
   return (
     <div>
-      <Profiler id="Foo">
-        <Foo />
-      </Profiler>
       <h2 className="text-lg font-bold mb-4">Input and List</h2>
       <input
         value={text}
@@ -133,23 +134,6 @@ function SlowItem({ text }: { text: string }) {
     </li>
   );
 }
-
-const Foo = React.memo(function Foo() {
-  const [toggleFoo, setToggleFoo] = React.useState(false);
-  simulateDelay(200);
-
-  return (
-    <div>
-      <button
-        onClick={() => {
-          setToggleFoo(!toggleFoo);
-        }}
-      >
-        Update Foo Slow Component
-      </button>
-    </div>
-  );
-});
 
 function ProfilerTimelineEvents({
   children,
@@ -268,10 +252,6 @@ function ProfilerTimeline({
       {!isProfilingStarted && data.profiles.length > 0 && (
         <Timeline events={[...events, ...renderEvents]} replayer={replayer} />
       )}
-      <div
-        ref={replayer.playerRef}
-        className="w-full h-auto border border-gray-300 rounded-lg bg-white shadow"
-      />
     </div>
   );
 }
