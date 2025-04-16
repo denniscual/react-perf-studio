@@ -63,9 +63,9 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
     return (
       <div className="p-2 border rounded-md shadow-md dark:bg-gray-800 bg-white dark:border-gray-700 border-gray-300">
         <p className="font-semibold dark:text-white">{data.name}</p>
-        <p className="text-sm dark:text-gray-300 text-gray-600">
+        {/* <p className="text-sm dark:text-gray-300 text-gray-600">
           Type: {data.type}
-        </p>
+        </p> */}
         <p className="text-sm dark:text-gray-300 text-gray-600">
           Duration: {data.duration.toFixed(2)}ms
         </p>
