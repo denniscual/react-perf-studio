@@ -39,6 +39,7 @@ interface CustomShapeProps {
   payload: ChartData;
   xAxis: any;
   yAxis: any;
+  replayer: any;
 }
 
 interface CustomTooltipProps {
@@ -82,7 +83,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
 
 // Custom shape for the events in the timeline with correct alignment
 const CustomShape: React.FC<CustomShapeProps> = (props) => {
-  const { payload, xAxis } = props;
+  const { payload, xAxis, replayer } = props;
   const eventHeight = 25;
   const verticalSpacing = 40;
 
@@ -123,6 +124,9 @@ const CustomShape: React.FC<CustomShapeProps> = (props) => {
 
   return (
     <Rectangle
+      onMouseDown={() => {
+        replayer.jumpToTime(payload.startTime);
+      }}
       x={startX}
       y={yOffset - eventHeight / 2}
       width={width}
@@ -137,7 +141,8 @@ const CustomShape: React.FC<CustomShapeProps> = (props) => {
 // Main Timeline Profiler component
 const TimelineProfiler: React.FC<{
   events: ProfilerEvent[];
-}> = ({ events }) => {
+  replayer: any;
+}> = ({ events, replayer }) => {
   // Set time window
   const times = events.map((d) => [d.startTime, d.endTime]).flat();
   const minTime = Math.min(...times);
@@ -262,7 +267,7 @@ const TimelineProfiler: React.FC<{
     }
 
     // Generate ticks from that point forward
-    const ticks = [];
+    const ticks: number[] = [];
     for (let tick = firstTick; tick <= zoomState.right; tick += tickInterval) {
       ticks.push(tick);
     }
@@ -642,12 +647,12 @@ const TimelineProfiler: React.FC<{
                   padding={{ top: 40, bottom: 40 }}
                   stroke={darkMode ? "#e2e8f0" : "#4a5568"}
                 />
-                <Tooltip content={<CustomTooltip />} />
+                {/* <Tooltip content={<CustomTooltip />} /> */}
                 <Scatter
                   data={chartData}
                   shape={
                     // @ts-expect-error props are handled internally by Scatter
-                    <CustomShape />
+                    <CustomShape replayer={replayer} />
                   }
                 />
 
