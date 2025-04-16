@@ -18,7 +18,6 @@ import {
   Cell,
 } from "recharts";
 import { formatMilliseconds } from "./util";
-import { flushSync } from "react-dom";
 
 export const ProfilerProviderContext = React.createContext<{
   isProfilingStarted: boolean;
