@@ -20,6 +20,7 @@ interface SessionRecorderProps {
     events: any[];
     playerRef: React.RefObject<HTMLDivElement>;
     setTimeOffset: (offset: number) => void;
+    jumpToTime: (index: number) => void;
   }) => React.ReactNode;
   initialTimeOffset?: number;
 }
@@ -32,6 +33,7 @@ const SessionRecorder = (props: SessionRecorderProps) => {
   const [playerInstance, setPlayerInstance] = useState<any>(null);
   const [timeOffset, setTimeOffset] = useState(initialTimeOffset);
 
+  const rrwebPlayerRef = useRef<any>(null);
   const playerRef = useRef<HTMLDivElement>(null);
   const eventsRef = useRef<any[]>([]);
   const stopRecordingRef = useRef<(() => void) | null>(null);
@@ -60,9 +62,7 @@ const SessionRecorder = (props: SessionRecorderProps) => {
 
         // Apply time offset to all events
         if (timeOffset !== 0) {
-          console.log("old event", newEvent.timestamp);
           newEvent.timestamp += timeOffset;
-          console.log("new event", newEvent.timestamp);
         }
 
         // Ensure proper timing between consecutive events
@@ -155,6 +155,8 @@ const SessionRecorder = (props: SessionRecorderProps) => {
           },
         });
 
+        rrwebPlayerRef.current = player;
+
         setPlayerInstance(player);
       } catch (err) {
         console.error("Error creating player:", err);
@@ -166,6 +168,18 @@ const SessionRecorder = (props: SessionRecorderProps) => {
     playRecordingRef.current?.();
   }, []);
 
+  // Function to jump to a specific event by index
+  const jumpToTime = useCallback(
+    (time: number) => {
+      console.log({ time });
+      if (!playerInstance || !rrwebPlayerRef.current) {
+        return;
+      }
+      rrwebPlayerRef.current?.goto(time);
+    },
+    [playerInstance]
+  );
+
   // Export all necessary functions and state
   const value = {
     recording,
@@ -175,6 +189,7 @@ const SessionRecorder = (props: SessionRecorderProps) => {
     events,
     playerRef,
     setTimeOffset,
+    jumpToTime,
   };
 
   return props.children(value);
