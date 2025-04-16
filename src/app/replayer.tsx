@@ -26,7 +26,7 @@ interface SessionRecorderProps {
 }
 
 const SessionRecorder = (props: SessionRecorderProps) => {
-  const { initialTimeOffset = -1200 } = props;
+  const { initialTimeOffset = -1000 } = props;
 
   const [recording, setRecording] = useState(false);
   const [events, setEvents] = useState<any[]>([]);
