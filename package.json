@@ -19,6 +19,7 @@
     "puppeteer": "^24.4.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-scan": "^0.3.3",
     "recharts": "^2.15.1",
     "rrweb": "2.0.0-alpha.4",
     "rrweb-player": "1.0.0-alpha.4",
