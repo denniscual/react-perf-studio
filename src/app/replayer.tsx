@@ -19,19 +19,15 @@ interface SessionRecorderProps {
     playRecording: () => void;
     events: any[];
     playerRef: React.RefObject<HTMLDivElement>;
-    setTimeOffset: (offset: number) => void;
     jumpToTime: (index: number) => void;
   }) => React.ReactNode;
   initialTimeOffset?: number;
 }
 
 const SessionRecorder = (props: SessionRecorderProps) => {
-  const { initialTimeOffset = -700 } = props;
-
   const [recording, setRecording] = useState(false);
   const [events, setEvents] = useState<any[]>([]);
   const [playerInstance, setPlayerInstance] = useState<any>(null);
-  const [timeOffset, setTimeOffset] = useState(initialTimeOffset);
 
   const playerRef = useRef<HTMLDivElement>(null);
   const eventsRef = useRef<any[]>([]);
@@ -49,36 +45,6 @@ const SessionRecorder = (props: SessionRecorderProps) => {
       }
     };
   }, [playerInstance]);
-
-  // Process events with time offset
-  const getProcessedEvents = useCallback(
-    (rawEvents: any[]) => {
-      if (!rawEvents.length) return [];
-
-      return rawEvents.map((event, index) => {
-        // Make a copy to avoid mutation
-        const newEvent = { ...event };
-
-        // Apply time offset to all events
-        if (timeOffset !== 0) {
-          newEvent.timestamp += timeOffset;
-        }
-
-        // Ensure proper timing between consecutive events
-        if (index > 0) {
-          const prevEvent = rawEvents[index - 1];
-          const minDiff = 10; // Minimum 10ms between events
-
-          if (newEvent.timestamp - prevEvent.timestamp < minDiff) {
-            newEvent.timestamp = prevEvent.timestamp + minDiff;
-          }
-        }
-
-        return newEvent;
-      });
-    },
-    [timeOffset],
-  );
 
   const startRecording = useCallback(() => {
     // Clean up existing player
@@ -134,9 +100,6 @@ const SessionRecorder = (props: SessionRecorderProps) => {
         }
       }
 
-      // Get processed events with proper timing and offsets
-      const processedEvents = getProcessedEvents(events);
-
       // Create new player
       try {
         // Clear container first
@@ -147,7 +110,7 @@ const SessionRecorder = (props: SessionRecorderProps) => {
         const player = new rrwebPlayer({
           target: playerRef.current,
           props: {
-            events: processedEvents,
+            events,
             width: 710,
             showController: true,
             autoPlay: true,
@@ -174,7 +137,7 @@ const SessionRecorder = (props: SessionRecorderProps) => {
       playerInstance.goto(time);
       playerInstance.pause();
     },
-    [playerInstance],
+    [playerInstance]
   );
 
   // Export all necessary functions and state
@@ -185,7 +148,6 @@ const SessionRecorder = (props: SessionRecorderProps) => {
     playRecording,
     events,
     playerRef,
-    setTimeOffset,
     jumpToTime,
   };
 
