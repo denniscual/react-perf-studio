@@ -4,7 +4,6 @@ import React, {
   useSyncExternalStore,
   useRef,
   useCallback,
-  useEffect,
   useInsertionEffect,
 } from "react";
 import {
