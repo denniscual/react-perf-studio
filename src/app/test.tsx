@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useSyncExternalStore } from "react";
+import React, { useCallback, useEffect, useSyncExternalStore } from "react";
 import { simulateDelay } from "./util";
 import {
   Profiler,
@@ -160,19 +160,52 @@ function ProfilerTimeline({
   );
   const { isProfilingStarted } = useProfilerProvider();
 
-  const renderEvents: any[] = [];
-  data.renders.forEach((render, idx) => {
-    const event = {
-      id: `${render.id}-${idx}`,
-      type: "render",
-      name: render.id,
-      startTime: render.startTime,
-      endTime: render.startTime + render.actualDuration,
-      duration: render.actualDuration,
-      depht: 0,
-    };
-    renderEvents.push(event);
-  });
+  // Reference to store the baseline timestamp when profiling starts
+  const baselineTimestampRef = React.useRef<number | null>(null);
+
+  // Effect to initialize the baseline timestamp when profiling starts
+  useEffect(() => {
+    if (isProfilingStarted && baselineTimestampRef.current === null) {
+      // Set the baseline timestamp when profiling starts
+      baselineTimestampRef.current = performance.now();
+
+      // Clear previous events when starting a new profiling session
+      onTriggerEvent([]);
+    }
+
+    // Reset the baseline when profiling stops
+    if (!isProfilingStarted) {
+      baselineTimestampRef.current = null;
+    }
+  }, [isProfilingStarted, onTriggerEvent]);
+
+  // Calculate relative time from the baseline
+  const getRelativeTime = useCallback((absoluteTime: number): number => {
+    if (baselineTimestampRef.current === null) return absoluteTime;
+    return absoluteTime - baselineTimestampRef.current;
+  }, []);
+
+  useEffect(() => {
+    const renderEvents: any[] = [];
+    data.renders.forEach((render, idx) => {
+      // Adjust the times relative to our baseline
+      const relativeStartTime = getRelativeTime(render.startTime);
+
+      if (relativeStartTime < 0) return;
+
+      const event = {
+        id: `${render.id}-${idx}`,
+        type: "render",
+        name: render.id,
+        startTime: relativeStartTime,
+        endTime: relativeStartTime + render.actualDuration,
+        duration: render.actualDuration,
+        depht: 0,
+      };
+      renderEvents.push(event);
+    });
+    onTriggerEvent((prev: any) => [...prev, ...renderEvents]);
+  }, [data.renders, getRelativeTime, onTriggerEvent]);
 
   useEffect(
     function observeEventTiming() {
@@ -186,12 +219,17 @@ function ProfilerTimeline({
             return;
           }
 
+          // Adjust the times relative to our baseline
+          const relativeStartTime = getRelativeTime(entry.startTime);
+
+          if (relativeStartTime < 0) return;
+
           const event = {
             id: `${entry.name}-${idx}`,
             type: "input",
             name: entry.name,
-            startTime: entry.startTime,
-            endTime: entry.startTime + entry.duration,
+            startTime: relativeStartTime,
+            endTime: relativeStartTime + entry.duration,
             duration: entry.duration,
             depth: 1,
           };
@@ -209,7 +247,7 @@ function ProfilerTimeline({
 
       return () => observer.disconnect();
     },
-    [isProfilingStarted, onTriggerEvent]
+    [getRelativeTime, isProfilingStarted, onTriggerEvent]
   );
 
   useEffect(
@@ -223,13 +261,19 @@ function ProfilerTimeline({
           if (!(entry instanceof PerformanceResourceTiming)) return;
           if (!isResourceIncludedInWhiteList(entry)) return;
 
+          // Adjust the times relative to our baseline
+          const relativeFetchStart = getRelativeTime(entry.fetchStart);
+          const relativeResponseEnd = getRelativeTime(entry.responseEnd);
+
+          if (relativeFetchStart < 0) return;
+
           const event = {
             id: `${entry.name}-${idx}`,
             type: "resource",
             name: entry.name,
-            startTime: entry.fetchStart,
-            endTime: entry.responseEnd,
-            duration: entry.duration,
+            startTime: relativeFetchStart,
+            endTime: relativeResponseEnd,
+            duration: relativeResponseEnd - relativeFetchStart,
             depth: 1,
           };
           onTriggerEvent((prev) => [...prev, event]);
@@ -244,13 +288,13 @@ function ProfilerTimeline({
 
       return () => observer.disconnect();
     },
-    [isProfilingStarted, onTriggerEvent]
+    [getRelativeTime, isProfilingStarted, onTriggerEvent]
   );
 
   return (
     <div className="flex flex-col space-y-4 w-full">
       {!isProfilingStarted && data.profiles.length > 0 && (
-        <Timeline events={[...events, ...renderEvents]} replayer={replayer} />
+        <Timeline events={events} replayer={replayer} />
       )}
     </div>
   );
