@@ -127,14 +127,6 @@ export const ProfilerControls = React.memo(function ProfilerControls({
     };
   });
 
-  const enableProfilingOnMount = useCallback(() => {
-    enableProfilingOnMountRef.current();
-  }, []);
-
-  useEffect(() => {
-    enableProfilingOnMount();
-  }, [enableProfilingOnMount]);
-
   const handleResetData = React.useCallback(() => {
     profilerDataStore.clearData();
   }, []);
