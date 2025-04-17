@@ -26,7 +26,7 @@ interface SessionRecorderProps {
 }
 
 const SessionRecorder = (props: SessionRecorderProps) => {
-  const { initialTimeOffset = -1000 } = props;
+  const { initialTimeOffset = -700 } = props;
 
   const [recording, setRecording] = useState(false);
   const [events, setEvents] = useState<any[]>([]);
@@ -77,7 +77,7 @@ const SessionRecorder = (props: SessionRecorderProps) => {
         return newEvent;
       });
     },
-    [timeOffset]
+    [timeOffset],
   );
 
   const startRecording = useCallback(() => {
@@ -174,7 +174,7 @@ const SessionRecorder = (props: SessionRecorderProps) => {
       playerInstance.goto(time);
       playerInstance.pause();
     },
-    [playerInstance]
+    [playerInstance],
   );
 
   // Export all necessary functions and state
