@@ -1,10 +1,9 @@
 "use client";
-import React, { useCallback, useEffect, useSyncExternalStore } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { simulateDelay } from "./util";
 import {
   Profiler,
   ProfilerControls,
-  profilerDataStore,
   ProfilerGraph,
   ProfilerProvider,
   useProfilerProvider,
@@ -12,6 +11,7 @@ import {
 import Timeline from "./timeline";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SessionRecorder from "./replayer";
+import { scan } from "react-scan";
 
 export default function TestList() {
   return (
@@ -119,13 +119,11 @@ const List = React.memo(function List({ text }: { text: string }) {
 });
 
 function SlowComponent() {
-  // Use the reusable delay function with a longer delay
   simulateDelay(120);
   return <div>Slow Component</div>;
 }
 
 function SlowItem({ text }: { text: string }) {
-  // Use the reusable delay function with default delay
   simulateDelay(5);
 
   return (
@@ -153,12 +151,8 @@ function ProfilerTimeline({
   onTriggerEvent: any;
   replayer: any;
 }) {
-  const data = useSyncExternalStore(
-    profilerDataStore.subscribe,
-    profilerDataStore.getSnapshot,
-    profilerDataStore.getSnapshot
-  );
-  const { isProfilingStarted } = useProfilerProvider();
+  const [isProfilingStarted, setIsProfilingStarted] = useState(false);
+  const profilerEventsRef = React.useRef<any>([]);
 
   // Reference to store the baseline timestamp when profiling starts
   const baselineTimestampRef = React.useRef<number | null>(null);
@@ -171,6 +165,8 @@ function ProfilerTimeline({
 
       // Clear previous events when starting a new profiling session
       onTriggerEvent([]);
+
+      profilerEventsRef.current = [];
     }
 
     // Reset the baseline when profiling stops
@@ -186,26 +182,44 @@ function ProfilerTimeline({
   }, []);
 
   useEffect(() => {
-    const renderEvents: any[] = [];
-    data.renders.forEach((render, idx) => {
-      // Adjust the times relative to our baseline
-      const relativeStartTime = getRelativeTime(render.startTime);
+    scan({
+      enabled: isProfilingStarted,
+      disableOutline: true,
+      showToolbar: false,
+      onRender(fiber, renders) {
+        const render = renders[0];
 
-      if (relativeStartTime < 0) return;
+        if (!fiber.actualStartTime || !render.time) {
+          return;
+        }
 
-      const event = {
-        id: `${render.id}-${idx}`,
-        type: "render",
-        name: render.id,
-        startTime: relativeStartTime,
-        endTime: relativeStartTime + render.actualDuration,
-        duration: render.actualDuration,
-        depht: 0,
-      };
-      renderEvents.push(event);
+        const startTime = getRelativeTime(fiber.actualStartTime);
+
+        if (startTime < 0) return;
+
+        const event = {
+          id: `${render.componentName}-${startTime}`,
+          type: "render",
+          name: render.componentName,
+          startTime: startTime,
+          endTime: startTime + render.time,
+          duration: render.time,
+          depth: 1,
+        };
+
+        console.log({
+          name: render.componentName,
+          startTime: fiber.actualStartTime,
+          relativeTime: startTime,
+          baselineTimestamp: baselineTimestampRef.current,
+          fiber,
+        });
+
+        profilerEventsRef.current.push(event);
+      },
+      animationSpeed: "off",
     });
-    onTriggerEvent((prev: any) => [...prev, ...renderEvents]);
-  }, [data.renders, getRelativeTime, onTriggerEvent]);
+  }, [getRelativeTime, isProfilingStarted, onTriggerEvent]);
 
   useEffect(
     function observeEventTiming() {
@@ -233,7 +247,8 @@ function ProfilerTimeline({
             duration: entry.duration,
             depth: 1,
           };
-          onTriggerEvent((prev) => [...prev, event]);
+
+          profilerEventsRef.current.push(event);
         });
       });
 
@@ -276,7 +291,8 @@ function ProfilerTimeline({
             duration: relativeResponseEnd - relativeFetchStart,
             depth: 1,
           };
-          onTriggerEvent((prev) => [...prev, event]);
+
+          profilerEventsRef.current.push(event);
         });
       });
 
@@ -293,7 +309,32 @@ function ProfilerTimeline({
 
   return (
     <div className="flex flex-col space-y-4 w-full">
-      {!isProfilingStarted && data.profiles.length > 0 && (
+      <button
+        onClick={() => {
+          const newState = !isProfilingStarted;
+          if (!newState) {
+            onTriggerEvent(profilerEventsRef.current);
+            replayer.stopRecording();
+
+            // play recording. put it into timeout callback to make sure
+            // the needed state for playing recording are all set.
+            // flushSync is not working.
+            setTimeout(() => {
+              replayer.playRecording();
+            }, 0);
+          } else {
+            // Clear the events when starting a new profiling session
+            onTriggerEvent([]);
+            profilerEventsRef.current = [];
+            replayer.startRecording();
+          }
+
+          setIsProfilingStarted(newState);
+        }}
+      >
+        {isProfilingStarted ? "Stop Profiling" : "Start Profiling"}
+      </button>
+      {!isProfilingStarted && events.length > 0 && (
         <Timeline events={events} replayer={replayer} />
       )}
     </div>
