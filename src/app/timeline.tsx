@@ -99,22 +99,16 @@ const CustomShape: React.FC<CustomShapeProps> = (props) => {
   let color;
   switch (payload.type) {
     case "render":
-      if (payload.duration >= 0 && payload.duration < 50) {
-        color = "#4299e1";
-      } else if (payload.duration >= 50 && payload.duration < 100) {
-        color = "#40fcd8";
-      } else {
-        color = "#f5e625";
-      }
+      color = "#4299e1";
       break;
     case "input":
-      color = "#ed64a6"; // Pink
+      color = "#ed64a6";
       break;
     case "resource":
-      color = "#48bb78"; // Green
+      color = "#48bb78";
       break;
     default:
-      color = "#a0aec0"; // Gray fallback
+      color = "#a0aec0";
   }
 
   const opacity = 0.8;
