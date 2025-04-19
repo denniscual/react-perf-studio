@@ -304,8 +304,6 @@ function ProfilerTimeline({
     [getRelativeTime, isProfilingStarted, onTriggerEvent]
   );
 
-  console.log({ events });
-
   return (
     <div className="flex flex-col space-y-4 w-full">
       <button
