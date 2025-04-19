@@ -1,13 +1,7 @@
 "use client";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { memo, useCallback, useEffect, useState } from "react";
 import { simulateDelay } from "./util";
-import {
-  Profiler,
-  ProfilerControls,
-  ProfilerGraph,
-  ProfilerProvider,
-  useProfilerProvider,
-} from "./profiler";
+import { ProfilerControls, ProfilerGraph, ProfilerProvider } from "./profiler";
 import Timeline from "./timeline";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SessionRecorder from "./replayer";
@@ -22,11 +16,10 @@ export default function TestList() {
             <div className="space-y-6">
               <div>
                 <h2 className="text-lg font-bold mb-6">Profiler</h2>
-                <Profiler id="ProfilerControls">
-                  <ProfilerControls replayer={replayer} />
-                </Profiler>
+                <ProfilerControls replayer={replayer} />
               </div>
               <div className="w-1/2">
+                <Foo />
                 <TestComponent />
               </div>
             </div>
@@ -70,7 +63,7 @@ export default function TestList() {
   );
 }
 
-function TestComponent() {
+const TestComponent = memo(function TestComponent() {
   const [text, setText] = React.useState("");
   const deferredText = React.useDeferredValue(text);
 
@@ -94,26 +87,30 @@ function TestComponent() {
       <List text={deferredText} />
     </div>
   );
+});
+
+function Foo() {
+  const [count, setCount] = React.useState(0);
+  if (count === 1) {
+    simulateDelay(40);
+  }
+  return (
+    <div>
+      <button onClick={() => setCount(count + 1)}>Increment count</button>
+    </div>
+  );
 }
 
 const List = React.memo(function List({ text }: { text: string }) {
   simulateDelay(10);
   const items: React.ReactNode[] = [];
   for (let i = 0; i < 5; i++) {
-    items.push(
-      <Profiler id={`SlowItem-${i}`} key={i}>
-        <SlowItem text={text} />
-      </Profiler>
-    );
+    items.push(<SlowItem key={i} text={text} />);
   }
   return (
     <div>
       <ul className="space-y-2 my-4">{items}</ul>
-      {text.includes("y") && (
-        <Profiler id="SlowComponent">
-          <SlowComponent />
-        </Profiler>
-      )}
+      {text.includes("y") && <SlowComponent />}
     </div>
   );
 });
@@ -306,6 +303,8 @@ function ProfilerTimeline({
     },
     [getRelativeTime, isProfilingStarted, onTriggerEvent]
   );
+
+  console.log({ events });
 
   return (
     <div className="flex flex-col space-y-4 w-full">
