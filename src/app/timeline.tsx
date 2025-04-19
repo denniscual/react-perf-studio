@@ -28,6 +28,7 @@ interface ChartData extends ProfilerEvent {
   y: number;
   z: number;
   baseTime: number;
+  duration: number;
 }
 
 interface CustomShapeProps {
@@ -98,7 +99,13 @@ const CustomShape: React.FC<CustomShapeProps> = (props) => {
   let color;
   switch (payload.type) {
     case "render":
-      color = "#4299e1"; // Blue
+      if (payload.duration >= 0 && payload.duration < 50) {
+        color = "#4299e1";
+      } else if (payload.duration >= 50 && payload.duration < 100) {
+        color = "#40fcd8";
+      } else {
+        color = "#f5e625";
+      }
       break;
     case "input":
       color = "#ed64a6"; // Pink
