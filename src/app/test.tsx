@@ -1,5 +1,5 @@
 "use client";
-import React, { memo, useCallback, useEffect, useState } from "react";
+import React, { memo, useCallback, useEffect } from "react";
 import { simulateDelay } from "./util";
 import { ProfilerControls, ProfilerGraph, ProfilerProvider } from "./profiler";
 // import Timeline from "./timeline";
@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SessionRecorder from "./replayer";
 import { scan } from "react-scan";
 import { Timeline } from "@/components/timeline";
-import { EventTrack } from "@/components/timeline/renderer";
+import { EventTrack, TimelineEvent } from "@/components/timeline/renderer";
 
 export default function TestList() {
   return (
@@ -42,11 +42,11 @@ export default function TestList() {
                     </TabsTrigger>
                   </TabsList>
                   <ProfilerTimelineEventTracks>
-                    {({ tracks, setTracks }) => (
+                    {({ eventTracks, setEventTracks }) => (
                       <TabsContent value="timeline">
                         <ProfilerTimeline
-                          tracks={tracks}
-                          onEventTracksUpdate={setTracks}
+                          eventTracks={eventTracks}
+                          setEventTracks={setEventTracks}
                           replayer={replayer}
                         />
                       </TabsContent>
@@ -133,75 +133,40 @@ function SlowItem({ text }: { text: string }) {
 }
 
 function ProfilerTimeline({
-  tracks,
-  onEventTracksUpdate,
+  eventTracks,
+  setEventTracks,
   replayer,
 }: {
-  tracks: EventTrack[];
-  onEventTracksUpdate: React.Dispatch<React.SetStateAction<EventTrack[]>>;
+  eventTracks: Map<string, EventTrack>;
+  setEventTracks: React.Dispatch<React.SetStateAction<Map<string, EventTrack>>>;
   replayer: any;
 }) {
-  const [isProfilingStarted, setIsProfilingStarted] = useState(false);
-  const profilerEventTracksRef = React.useRef<EventTrack[]>(tracks);
-
+  const [profilingSessionStatus, setProfilingSessionStatus] = React.useState<
+    "init" | "pending" | "stop"
+  >("init");
   // Reference to store the baseline timestamp when profiling starts
   const baselineTimestampRef = React.useRef<number | null>(null);
+  // Create a ref to store the event eventTracks to avoid infinite re-renders caused by react-scan.
+  const eventTracksRef = React.useRef<Map<string, EventTrack>>(eventTracks);
 
   // Effect to initialize the baseline timestamp when profiling starts
   useEffect(() => {
-    if (isProfilingStarted && baselineTimestampRef.current === null) {
+    if (
+      profilingSessionStatus === "pending" &&
+      baselineTimestampRef.current === null
+    ) {
       // Set the baseline timestamp when profiling starts
       baselineTimestampRef.current = performance.now();
 
       // Clear previous events when starting a new profiling session
-      onEventTracksUpdate([
-        {
-          id: "network-resource",
-          label: "Network Requests",
-          color: "rgb(64, 192, 87)",
-          events: [],
-        },
-        {
-          id: "user-input",
-          label: "User Inputs",
-          color: "#ed64a6",
-          events: [],
-        },
-        {
-          id: "render",
-          label: "Renders",
-          color: "#4299e1",
-          events: [],
-        },
-      ]);
-
-      profilerEventTracksRef.current = [
-        {
-          id: "network-resource",
-          label: "Network Requests",
-          color: "rgb(64, 192, 87)",
-          events: [],
-        },
-        {
-          id: "user-input",
-          label: "User Inputs",
-          color: "#ed64a6",
-          events: [],
-        },
-        {
-          id: "render",
-          label: "Renders",
-          color: "#4299e1",
-          events: [],
-        },
-      ];
+      setEventTracks(initEventTracks());
     }
 
     // Reset the baseline when profiling stops
-    if (!isProfilingStarted) {
+    if (profilingSessionStatus === "stop") {
       baselineTimestampRef.current = null;
     }
-  }, [isProfilingStarted, onEventTracksUpdate]);
+  }, [setEventTracks, profilingSessionStatus]);
 
   // Calculate relative time from the baseline
   const getRelativeTime = useCallback((absoluteTime: number): number => {
@@ -209,9 +174,23 @@ function ProfilerTimeline({
     return absoluteTime - baselineTimestampRef.current;
   }, []);
 
+  const addTimelineEvent = React.useCallback((event: TimelineEvent) => {
+    const eventTracks = eventTracksRef.current;
+    const eventTrack = eventTracks.get(event.eventTrackId);
+
+    if (!eventTrack) return;
+
+    eventTracks.set(event.eventTrackId, {
+      ...eventTrack,
+      events: [...eventTrack.events, event],
+    });
+
+    eventTracksRef.current = new Map(eventTracks);
+  }, []);
+
   useEffect(() => {
     scan({
-      enabled: isProfilingStarted,
+      enabled: profilingSessionStatus === "pending",
       disableOutline: true,
       showToolbar: false,
       onRender(fiber, renders) {
@@ -226,29 +205,23 @@ function ProfilerTimeline({
         if (startTime < 0) return;
 
         const event = {
-          id: `${render.componentName}-${startTime}`,
+          id: `${render.componentName}-${roundTime(startTime)}`,
           label: render.componentName ?? "Unknown",
-          startTime: startTime,
-          endTime: startTime + render.time,
-          duration: render.time,
+          startTime: roundTime(startTime),
+          endTime: roundTime(startTime + render.time),
+          duration: roundTime(render.time),
           eventTrackId: "render",
         };
 
-        const renderTrackIdx = profilerEventTracksRef.current.findIndex(
-          (track) => track.id === "render"
-        );
-        profilerEventTracksRef.current[renderTrackIdx].events = [
-          ...profilerEventTracksRef.current[renderTrackIdx].events,
-          event,
-        ];
+        addTimelineEvent(event);
       },
       animationSpeed: "off",
     });
-  }, [getRelativeTime, isProfilingStarted]);
+  }, [addTimelineEvent, getRelativeTime, profilingSessionStatus]);
 
   useEffect(
     function observeEventTiming() {
-      if (!isProfilingStarted) {
+      if (profilingSessionStatus !== "pending") {
         return;
       }
 
@@ -266,19 +239,13 @@ function ProfilerTimeline({
           const event = {
             id: `${entry.name}-${idx}`,
             label: entry.name,
-            startTime: relativeStartTime,
-            endTime: relativeStartTime + entry.duration,
-            duration: entry.duration,
+            startTime: roundTime(relativeStartTime),
+            endTime: roundTime(relativeStartTime + entry.duration),
+            duration: roundTime(entry.duration),
             eventTrackId: "user-input",
           };
 
-          const userInputTrackIdx = profilerEventTracksRef.current.findIndex(
-            (track) => track.id === "user-input"
-          );
-          profilerEventTracksRef.current[userInputTrackIdx].events = [
-            ...profilerEventTracksRef.current[userInputTrackIdx].events,
-            event,
-          ];
+          addTimelineEvent(event);
         });
       });
 
@@ -292,12 +259,12 @@ function ProfilerTimeline({
 
       return () => observer.disconnect();
     },
-    [getRelativeTime, isProfilingStarted]
+    [addTimelineEvent, getRelativeTime, profilingSessionStatus]
   );
 
   useEffect(
     function observeResourceTiming() {
-      if (!isProfilingStarted) {
+      if (profilingSessionStatus !== "pending") {
         return;
       }
 
@@ -315,19 +282,13 @@ function ProfilerTimeline({
           const event = {
             id: `${entry.name}-${idx}`,
             label: entry.name,
-            startTime: relativeFetchStart,
-            endTime: relativeResponseEnd,
-            duration: relativeResponseEnd - relativeFetchStart,
+            startTime: roundTime(relativeFetchStart),
+            endTime: roundTime(relativeResponseEnd),
+            duration: roundTime(relativeResponseEnd - relativeFetchStart),
             eventTrackId: "network-resource",
           };
 
-          const networkTrackIdx = profilerEventTracksRef.current.findIndex(
-            (track) => track.id === "network-resource"
-          );
-          profilerEventTracksRef.current[networkTrackIdx].events = [
-            ...profilerEventTracksRef.current[networkTrackIdx].events,
-            event,
-          ];
+          addTimelineEvent(event);
         });
       });
 
@@ -339,18 +300,24 @@ function ProfilerTimeline({
 
       return () => observer.disconnect();
     },
-    [getRelativeTime, isProfilingStarted]
+    [addTimelineEvent, getRelativeTime, profilingSessionStatus]
   );
+
+  const tracksArray = Array.from(eventTracks.values());
 
   return (
     <div className="flex flex-col space-y-4 w-full">
       <button
         onClick={() => {
-          const newState = !isProfilingStarted;
-          if (!newState) {
-            onEventTracksUpdate([...profilerEventTracksRef.current]);
-            replayer.stopRecording();
+          const newStatus =
+            profilingSessionStatus !== "pending" ? "pending" : "stop";
 
+          if (newStatus === "stop") {
+            // Update the event eventTracks
+            setEventTracks(new Map(eventTracksRef.current));
+            eventTracksRef.current = initEventTracks();
+
+            replayer.stopRecording();
             // play recording. put it into timeout callback to make sure
             // the needed state for playing recording are all set.
             // flushSync is not working.
@@ -359,57 +326,22 @@ function ProfilerTimeline({
             }, 0);
           } else {
             // Clear the events when starting a new profiling session
-            onEventTracksUpdate([
-              {
-                id: "network-resource",
-                label: "Network Requests",
-                color: "rgb(64, 192, 87)",
-                events: [],
-              },
-              {
-                id: "user-input",
-                label: "User Inputs",
-                color: "#ed64a6",
-                events: [],
-              },
-              {
-                id: "render",
-                label: "Renders",
-                color: "#4299e1",
-                events: [],
-              },
-            ]);
-            profilerEventTracksRef.current = [
-              {
-                id: "network-resource",
-                label: "Network Requests",
-                color: "rgb(64, 192, 87)",
-                events: [],
-              },
-              {
-                id: "user-input",
-                label: "User Inputs",
-                color: "#ed64a6",
-                events: [],
-              },
-              {
-                id: "render",
-                label: "Renders",
-                color: "#4299e1",
-                events: [],
-              },
-            ];
+            setEventTracks(initEventTracks());
+            eventTracksRef.current = initEventTracks();
+            // Start recording
             replayer.startRecording();
           }
 
-          setIsProfilingStarted(newState);
+          setProfilingSessionStatus(newStatus);
         }}
       >
-        {isProfilingStarted ? "Stop Profiling" : "Start Profiling"}
+        {profilingSessionStatus !== "pending"
+          ? "Start Profiling"
+          : "Stop Profiling"}
       </button>
-      {!isProfilingStarted && tracks.length > 0 && (
+      {profilingSessionStatus === "stop" && tracksArray.length > 0 && (
         <Timeline
-          tracks={tracks}
+          tracks={tracksArray}
           onEventClick={(event) => {
             console.log("Clicked event:", event);
           }}
@@ -423,31 +355,51 @@ function ProfilerTimelineEventTracks({
   children,
 }: {
   children: (props: {
-    tracks: EventTrack[];
-    setTracks: React.Dispatch<React.SetStateAction<EventTrack[]>>;
+    eventTracks: Map<string, EventTrack>;
+    setEventTracks: React.Dispatch<
+      React.SetStateAction<Map<string, EventTrack>>
+    >;
   }) => React.ReactNode;
 }) {
-  const [tracks, setTracks] = React.useState<EventTrack[]>([
-    {
-      id: "network-resource",
-      label: "Network Requests",
-      color: "rgb(64, 192, 87)",
-      events: [],
-    },
-    {
-      id: "user-input",
-      label: "User Inputs",
-      color: "#ed64a6",
-      events: [],
-    },
-    {
-      id: "render",
-      label: "Renders",
-      color: "#4299e1",
-      events: [],
-    },
-  ]);
-  return children({ tracks, setTracks });
+  const [eventTracks, setEventTracks] = React.useState<Map<string, EventTrack>>(
+    () => {
+      return initEventTracks();
+    }
+  );
+  return children({ eventTracks, setEventTracks });
+}
+
+function initEventTracks() {
+  const defaultValue: [string, EventTrack][] = [
+    [
+      "network-resource",
+      {
+        id: "network-resource",
+        label: "Network Requests",
+        color: "rgb(64, 192, 87)",
+        events: [],
+      },
+    ],
+    [
+      "user-input",
+      {
+        id: "user-input",
+        label: "User Inputs",
+        color: "#ed64a6",
+        events: [],
+      },
+    ],
+    [
+      "render",
+      {
+        id: "render",
+        label: "Renders",
+        color: "#4299e1",
+        events: [],
+      },
+    ],
+  ];
+  return new Map<string, EventTrack>(defaultValue);
 }
 
 function isResourceIncludedInWhiteList(entry: PerformanceResourceTiming) {
@@ -463,4 +415,8 @@ function isResourceIncludedInWhiteList(entry: PerformanceResourceTiming) {
   const isFetchInitiator = entry.initiatorType === "fetch";
 
   return isJson || isScript || isCss || isImg || isFetchInitiator;
+}
+
+function roundTime(time: number): number {
+  return Math.round(time * 100) / 100;
 }
