@@ -1,55 +1,62 @@
 "use client";
 
-import React, { useRef, useState, useEffect, WheelEventHandler } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import {
-  TimelineRenderer,
-  TimelineEvent,
   EventTrack,
-  TRACK_HEIGHT,
-  TRACK_PADDING,
-  TIME_MARKERS_HEIGHT,
-  LEGEND_HEIGHT,
-  MIN_SCALE,
   MAX_SCALE,
+  MIN_SCALE,
+  MouseState,
+  TimelineEvent,
+  TimelineRenderer,
+  Viewport,
 } from "./renderer";
 
-export function Timeline({ tracks }: { tracks: EventTrack[] }) {
+// React component that uses TimelineRenderer
+export const Timeline = ({ tracks }: { tracks: EventTrack[] }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<TimelineRenderer | null>(null);
+  const [clickedEvent, setClickedEvent] = useState<TimelineEvent | null>(null);
 
-  // Viewport state
-  const [viewport, setViewport] = useState({
+  const [viewport, setViewport] = useState<Viewport>({
     offsetX: 0,
     scale: 0.1,
     startTime: 0,
     endTime: 800,
   });
 
-  // Mouse interaction state
-  const [mouseState, setMouseState] = useState({
+  const [mouseState, setMouseState] = useState<MouseState>({
     isDragging: false,
     lastX: 0,
     isHovering: false,
-    hoverEvent: null as TimelineEvent | null,
+    hoverEvent: null,
     hoverPosition: { x: 0, y: 0 },
   });
 
-  // Initialize the renderer
+  // Initialize TimelineRenderer
   useEffect(() => {
-    // Resize canvas to match container
+    if (!canvasRef.current) return;
+
+    const renderer = new TimelineRenderer(canvasRef.current);
+    renderer.setOnEventClick((event) => {
+      setClickedEvent(event);
+      console.log("Clicked event:", event);
+    });
+
+    rendererRef.current = renderer;
+  }, []);
+
+  useEffect(() => {
     const resizeCanvas = () => {
-      const canvas = canvasRef.current;
-      const container = containerRef.current;
-      if (!canvas || !container || !rendererRef.current) return;
+      if (!canvasRef.current || !containerRef.current || !rendererRef.current)
+        return;
 
-      canvas.width = container.clientWidth;
-      canvas.height = container.clientHeight;
+      canvasRef.current.width = containerRef.current.clientWidth;
+      canvasRef.current.height = containerRef.current.clientHeight;
 
-      rendererRef.current.resizeCanvas();
+      rendererRef.current.drawTimeline();
     };
 
-    rendererRef.current = new TimelineRenderer(canvasRef.current);
     resizeCanvas();
 
     const handleResize = () => {
@@ -62,7 +69,7 @@ export function Timeline({ tracks }: { tracks: EventTrack[] }) {
     };
   }, []);
 
-  // Update renderer with current state
+  // Update TimelineRenderer when state changes
   useEffect(() => {
     if (!rendererRef.current) return;
 
@@ -74,19 +81,20 @@ export function Timeline({ tracks }: { tracks: EventTrack[] }) {
 
   useEffect(() => {
     const canvas = canvasRef.current;
+
     if (!canvas) return;
 
-    const handleWheel: WheelEventHandler<HTMLCanvasElement> = (
-      e: React.WheelEvent
-    ) => {
+    const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
       e.stopPropagation();
 
-      // Calculate cursor position in time
-      const rect = canvas.getBoundingClientRect();
-      if (!rect) return;
+      if (!canvasRef.current) return;
 
+      const rect = canvasRef.current.getBoundingClientRect();
       const cursorX = e.clientX - rect.left;
+
+      // Calculate time at cursor position
+      const timeAtCursor = pixelToTime(cursorX, viewport);
 
       // Calculate new scale
       const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
@@ -97,9 +105,6 @@ export function Timeline({ tracks }: { tracks: EventTrack[] }) {
 
       // Calculate new offset to keep the point under cursor at the same position
       const cursorOffsetX = cursorX;
-      const timeAtCursor =
-        viewport.startTime +
-        (cursorOffsetX + viewport.offsetX) / viewport.scale;
       const newOffsetX =
         (timeAtCursor - viewport.startTime) * newScale - cursorOffsetX;
 
@@ -110,23 +115,14 @@ export function Timeline({ tracks }: { tracks: EventTrack[] }) {
       }));
     };
 
-    canvas.addEventListener(
-      "wheel",
-      // @ts-expect-error event type is incompatible to react wheel event type.
-      handleWheel,
-      {
-        passive: false,
-      }
-    );
+    canvas.addEventListener("wheel", handleWheel, {
+      passive: false,
+    });
 
     return () => {
-      canvas.removeEventListener(
-        "wheel",
-        // @ts-expect-error event type is incompatible to react wheel event type.
-        handleWheel
-      );
+      canvas.removeEventListener("wheel", handleWheel);
     };
-  }, [viewport.offsetX, viewport.scale, viewport.startTime]);
+  }, [viewport]);
 
   // Handle mouse down for panning
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -137,13 +133,34 @@ export function Timeline({ tracks }: { tracks: EventTrack[] }) {
     }));
   };
 
+  // Handle mouse up to stop panning or trigger click
+  const handleMouseUp = (e: React.MouseEvent) => {
+    if (!rendererRef.current || !canvasRef.current) return;
+
+    const wasQuickClick =
+      !mouseState.isDragging || Math.abs(e.clientX - mouseState.lastX) < 5;
+
+    // Reset dragging state
+    setMouseState((prev) => ({
+      ...prev,
+      isDragging: false,
+    }));
+
+    // Handle click if it wasn't a drag
+    if (wasQuickClick) {
+      const rect = canvasRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      rendererRef.current.handleClick(x, y);
+    }
+  };
+
   // Handle mouse move for panning and tooltips
   const handleMouseMove = (e: React.MouseEvent) => {
-    const rect = canvasRef.current?.getBoundingClientRect();
-    const renderer = rendererRef.current;
+    if (!canvasRef.current || !rendererRef.current) return;
 
-    if (!rect || !renderer) return;
-
+    const rect = canvasRef.current.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
@@ -161,48 +178,15 @@ export function Timeline({ tracks }: { tracks: EventTrack[] }) {
       return;
     }
 
-    // Handle hover detection
-    if (mouseY > TIME_MARKERS_HEIGHT + LEGEND_HEIGHT) {
-      const trackIndex = Math.floor(
-        (mouseY - TIME_MARKERS_HEIGHT - LEGEND_HEIGHT) /
-          (TRACK_HEIGHT + TRACK_PADDING)
-      );
+    // Find hovered event
+    const event = rendererRef.current.findEventAtPosition(mouseX, mouseY);
 
-      if (trackIndex >= 0 && trackIndex < tracks.length) {
-        const track = tracks[trackIndex];
-
-        // Find if hovering over an event
-        const hoverEvent = track.events.find((event) => {
-          const eventStartX = renderer.timeToPixel(event.startTime);
-          const eventEndX = renderer.timeToPixel(
-            event.startTime + event.duration
-          );
-          return mouseX >= eventStartX && mouseX <= eventEndX;
-        });
-
-        setMouseState((prev) => ({
-          ...prev,
-          isHovering: !!hoverEvent,
-          hoverEvent: hoverEvent || null,
-          hoverPosition: { x: mouseX, y: mouseY },
-        }));
-        return;
-      }
-    }
-
-    // Reset hover state if not hovering over an event
+    // Update hover state
     setMouseState((prev) => ({
       ...prev,
-      isHovering: false,
-      hoverEvent: null,
-    }));
-  };
-
-  // Handle mouse up to stop panning
-  const handleMouseUp = () => {
-    setMouseState((prev) => ({
-      ...prev,
-      isDragging: false,
+      isHovering: !!event,
+      hoverEvent: event,
+      hoverPosition: { x: mouseX, y: mouseY },
     }));
   };
 
@@ -216,6 +200,12 @@ export function Timeline({ tracks }: { tracks: EventTrack[] }) {
     }));
   };
 
+  const pixelToTime = (pixel: number, viewportState: Viewport): number => {
+    const { scale, offsetX, startTime } = viewportState;
+    return (pixel + offsetX) / scale + startTime;
+  };
+
+  // Reset view
   const resetView = () => {
     setViewport({
       offsetX: 0,
@@ -228,6 +218,7 @@ export function Timeline({ tracks }: { tracks: EventTrack[] }) {
   return (
     <div className="flex flex-col w-full h-full bg-gray-900 text-white">
       <div className="p-4 border-b border-gray-700 flex justify-between items-center">
+        <h2 className="text-xl font-bold">Profiler Timeline</h2>
         <div className="flex space-x-2">
           <button
             className="bg-gray-600 hover:bg-gray-700 px-3 py-1 rounded text-sm"
@@ -237,17 +228,64 @@ export function Timeline({ tracks }: { tracks: EventTrack[] }) {
           </button>
         </div>
       </div>
-      <div ref={containerRef} className="flex-1 w-full overflow-hidden">
-        <canvas
-          ref={canvasRef}
-          className="w-full h-full cursor-grab active:cursor-grabbing"
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseLeave}
-          height={400}
-        />
+
+      <div className="flex-1 flex">
+        <div
+          ref={containerRef}
+          className="flex-1 min-h-[600px] overflow-hidden relative"
+        >
+          <canvas
+            ref={canvasRef}
+            className="w-full h-full cursor-grab active:cursor-grabbing"
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseLeave}
+          />
+        </div>
+
+        {/* Event details panel */}
+        <div className="w-64 p-4 bg-gray-800 border-l border-gray-700 overflow-auto">
+          <h3 className="text-lg font-semibold mb-3">Event Details</h3>
+          {clickedEvent ? (
+            <div className="space-y-2">
+              <div className="bg-gray-700 p-3 rounded">
+                <div className="font-medium text-white">
+                  {clickedEvent.label}
+                </div>
+                <div className="text-sm text-gray-300 mt-1">
+                  ID: {clickedEvent.id}
+                </div>
+                <div className="text-sm text-gray-300">
+                  Type: {clickedEvent.type}
+                </div>
+                <div className="text-sm text-gray-300">
+                  Start: {clickedEvent.startTime}ms
+                </div>
+                <div className="text-sm text-gray-300">
+                  Duration: {clickedEvent.duration}ms
+                </div>
+                <div className="text-sm text-gray-300">
+                  End: {clickedEvent.startTime + clickedEvent.duration}ms
+                </div>
+                <div className="mt-2 text-xs bg-gray-800 p-2 rounded">
+                  <pre className="whitespace-pre-wrap">
+                    {JSON.stringify(clickedEvent, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-gray-400 italic">
+              Click on an event to see details
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="p-2 border-t border-gray-700 bg-gray-800 text-xs text-gray-400">
+        Use mouse wheel to zoom, drag to pan, click on events to view details
       </div>
     </div>
   );
-}
+};
