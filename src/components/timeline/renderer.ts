@@ -1,10 +1,10 @@
 export interface TimelineEvent {
   id: string;
-  type: string;
   label: string;
   startTime: number;
   endTime: number;
   duration: number;
+  eventTrackId: string;
 }
 
 export interface EventTrack {
@@ -421,11 +421,6 @@ export class TimelineRenderer {
       `ID: ${event.id}`,
       tooltipX + padding,
       tooltipY + padding + 30
-    );
-    ctx.fillText(
-      `Type: ${event.type}`,
-      tooltipX + padding,
-      tooltipY + padding + 45
     );
     ctx.fillText(
       `Start: ${event.startTime}ms`,
