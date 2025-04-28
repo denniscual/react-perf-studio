@@ -29,7 +29,6 @@ export interface MouseState {
   hoverPosition: { x: number; y: number };
 }
 
-// Constants for rendering
 export const TRACK_HEIGHT = 40;
 export const TRACK_PADDING = 10;
 export const TIME_MARKERS_HEIGHT = 30;
@@ -54,6 +53,7 @@ export class TimelineRenderer {
     hoverEvent: null,
     hoverPosition: { x: 0, y: 0 },
   };
+  private onEventClick: ((event: TimelineEvent) => void) | null = null;
 
   constructor(canvas: HTMLCanvasElement | null) {
     this.setCanvas(canvas);
@@ -74,6 +74,43 @@ export class TimelineRenderer {
 
   setMouseState(mouseState: MouseState) {
     this.mouseState = mouseState;
+  }
+
+  setOnEventClick(callback: (event: TimelineEvent) => void) {
+    this.onEventClick = callback;
+  }
+
+  // Find the event at a specific position
+  findEventAtPosition(x: number, y: number): TimelineEvent | null {
+    // If y position is in the legend or time markers area, return null
+    if (y <= TIME_MARKERS_HEIGHT + LEGEND_HEIGHT) return null;
+
+    // Calculate which track the click is on
+    const trackIndex = Math.floor(
+      (y - TIME_MARKERS_HEIGHT - LEGEND_HEIGHT) / (TRACK_HEIGHT + TRACK_PADDING)
+    );
+
+    // Check if trackIndex is valid
+    if (trackIndex < 0 || trackIndex >= this.tracks.length) return null;
+
+    const track = this.tracks[trackIndex];
+    const time = this.pixelToTime(x);
+
+    // Find the event that contains this time point
+    return (
+      track.events.find(
+        (event) =>
+          time >= event.startTime && time <= event.startTime + event.duration
+      ) || null
+    );
+  }
+
+  // Handle click events on the canvas
+  handleClick(x: number, y: number) {
+    const event = this.findEventAtPosition(x, y);
+    if (event && this.onEventClick) {
+      this.onEventClick(event);
+    }
   }
 
   // Convert time to pixel position
@@ -144,8 +181,9 @@ export class TimelineRenderer {
 
     // Find the closest standard interval to our ideal interval
     const standardIntervals = [
-      1, 5, 10, 25, 50, 100, 250, 500, 1000, 2000, 5000,
+      1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 5000, 10000,
     ];
+
     // Dynamically determine appropriate time interval based on zoom and duration
     const timeInterval = standardIntervals.reduce((prev, curr) =>
       Math.abs(curr - idealInterval) < Math.abs(prev - idealInterval)
@@ -158,15 +196,22 @@ export class TimelineRenderer {
     ctx.font = "10px Arial";
     ctx.textAlign = "center";
 
+    // Calculate start time aligned to interval
     const startTime =
       Math.floor(visibleStartTime / timeInterval) * timeInterval;
     const endTime = Math.ceil(visibleEndTime / timeInterval) * timeInterval;
 
-    for (let time = startTime; time <= endTime; time += timeInterval) {
-      const x = this.timeToPixel(time);
+    // Create a set to track used positions to avoid duplicates
+    const usedPositions = new Set<number>();
 
-      // Skip if out of viewport
-      if (x < 0 || x > width) continue;
+    for (let time = startTime; time <= endTime; time += timeInterval) {
+      const x = Math.round(this.timeToPixel(time));
+
+      // Skip if out of viewport or already used (prevents duplicates)
+      if (x < 0 || x > width || usedPositions.has(x)) continue;
+
+      // Mark this position as used
+      usedPositions.add(x);
 
       // Draw marker line
       ctx.beginPath();
@@ -176,12 +221,7 @@ export class TimelineRenderer {
       ctx.stroke();
 
       // Format time label based on magnitude
-      let timeLabel;
-      if (time >= 1000) {
-        timeLabel = `${(time / 1000).toFixed(2)}s`;
-      } else {
-        timeLabel = `${time}ms`;
-      }
+      const timeLabel = `${time}ms`;
 
       // Draw time label
       ctx.fillText(timeLabel, x, 20);
@@ -256,8 +296,12 @@ export class TimelineRenderer {
         TIME_MARKERS_HEIGHT + 36 + trackIndex * (TRACK_HEIGHT + TRACK_PADDING);
 
       track.events.forEach((event) => {
-        const eventX = this.timeToPixel(event.startTime);
-        const eventWidth = event.duration * this.viewport.scale;
+        // Use exact pixel calculations to ensure events align with time grid
+        const eventX = Math.round(this.timeToPixel(event.startTime));
+        const eventEndX = Math.round(
+          this.timeToPixel(event.startTime + event.duration)
+        );
+        const eventWidth = Math.max(1, eventEndX - eventX); // Ensure minimum width of 1px
 
         // Skip if event is outside the viewport
         if (eventX + eventWidth < 0 || eventX > this.canvas!.width) return;
@@ -339,8 +383,8 @@ export class TimelineRenderer {
     if (!this.ctx || !this.canvas) return;
 
     const ctx = this.ctx;
-    const tooltipWidth = 180;
-    const tooltipHeight = 80;
+    const tooltipWidth = 200;
+    const tooltipHeight = 90;
     const padding = 8;
 
     // Adjust position to ensure tooltip stays within canvas
@@ -374,19 +418,24 @@ export class TimelineRenderer {
 
     ctx.font = "11px Arial";
     ctx.fillText(
-      `Type: ${event.type}`,
+      `ID: ${event.id}`,
       tooltipX + padding,
       tooltipY + padding + 30
     );
     ctx.fillText(
-      `Start: ${event.startTime}ms`,
+      `Type: ${event.type}`,
       tooltipX + padding,
       tooltipY + padding + 45
     );
     ctx.fillText(
-      `Duration: ${event.duration}ms`,
+      `Start: ${event.startTime}ms`,
       tooltipX + padding,
       tooltipY + padding + 60
+    );
+    ctx.fillText(
+      `Duration: ${event.duration}ms`,
+      tooltipX + padding,
+      tooltipY + padding + 75
     );
   }
 
