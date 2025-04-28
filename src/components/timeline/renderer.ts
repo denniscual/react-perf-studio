@@ -1,9 +1,10 @@
 export interface TimelineEvent {
   id: string;
   type: string;
-  startTime: number;
-  duration: number;
   label: string;
+  startTime: number;
+  endTime: number;
+  duration: number;
 }
 
 export interface EventTrack {
