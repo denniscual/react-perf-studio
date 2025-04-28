@@ -46,7 +46,7 @@ export default function TestList() {
                       <TabsContent value="timeline">
                         <ProfilerTimeline
                           tracks={tracks}
-                          onUpdateEventTracks={setTracks}
+                          onEventTracksUpdate={setTracks}
                           replayer={replayer}
                         />
                       </TabsContent>
@@ -134,11 +134,11 @@ function SlowItem({ text }: { text: string }) {
 
 function ProfilerTimeline({
   tracks,
-  onUpdateEventTracks,
+  onEventTracksUpdate,
   replayer,
 }: {
   tracks: EventTrack[];
-  onUpdateEventTracks: React.Dispatch<React.SetStateAction<EventTrack[]>>;
+  onEventTracksUpdate: React.Dispatch<React.SetStateAction<EventTrack[]>>;
   replayer: any;
 }) {
   const [isProfilingStarted, setIsProfilingStarted] = useState(false);
@@ -154,9 +154,9 @@ function ProfilerTimeline({
       baselineTimestampRef.current = performance.now();
 
       // Clear previous events when starting a new profiling session
-      onUpdateEventTracks([
+      onEventTracksUpdate([
         {
-          id: "network",
+          id: "network-resource",
           label: "Network Requests",
           color: "rgb(64, 192, 87)",
           events: [],
@@ -177,7 +177,7 @@ function ProfilerTimeline({
 
       profilerEventTracksRef.current = [
         {
-          id: "network",
+          id: "network-resource",
           label: "Network Requests",
           color: "rgb(64, 192, 87)",
           events: [],
@@ -201,7 +201,7 @@ function ProfilerTimeline({
     if (!isProfilingStarted) {
       baselineTimestampRef.current = null;
     }
-  }, [isProfilingStarted, onUpdateEventTracks]);
+  }, [isProfilingStarted, onEventTracksUpdate]);
 
   // Calculate relative time from the baseline
   const getRelativeTime = useCallback((absoluteTime: number): number => {
@@ -227,11 +227,11 @@ function ProfilerTimeline({
 
         const event = {
           id: `${render.componentName}-${startTime}`,
-          type: "render",
           label: render.componentName ?? "Unknown",
           startTime: startTime,
           endTime: startTime + render.time,
           duration: render.time,
+          eventTrackId: "render",
         };
 
         const renderTrackIdx = profilerEventTracksRef.current.findIndex(
@@ -265,11 +265,11 @@ function ProfilerTimeline({
 
           const event = {
             id: `${entry.name}-${idx}`,
-            type: "input",
             label: entry.name,
             startTime: relativeStartTime,
             endTime: relativeStartTime + entry.duration,
             duration: entry.duration,
+            eventTrackId: "user-input",
           };
 
           const userInputTrackIdx = profilerEventTracksRef.current.findIndex(
@@ -314,15 +314,15 @@ function ProfilerTimeline({
 
           const event = {
             id: `${entry.name}-${idx}`,
-            type: "resource",
             label: entry.name,
             startTime: relativeFetchStart,
             endTime: relativeResponseEnd,
             duration: relativeResponseEnd - relativeFetchStart,
+            eventTrackId: "network-resource",
           };
 
           const networkTrackIdx = profilerEventTracksRef.current.findIndex(
-            (track) => track.id === "network"
+            (track) => track.id === "network-resource"
           );
           profilerEventTracksRef.current[networkTrackIdx].events = [
             ...profilerEventTracksRef.current[networkTrackIdx].events,
@@ -348,7 +348,7 @@ function ProfilerTimeline({
         onClick={() => {
           const newState = !isProfilingStarted;
           if (!newState) {
-            onUpdateEventTracks([...profilerEventTracksRef.current]);
+            onEventTracksUpdate([...profilerEventTracksRef.current]);
             replayer.stopRecording();
 
             // play recording. put it into timeout callback to make sure
@@ -359,9 +359,9 @@ function ProfilerTimeline({
             }, 0);
           } else {
             // Clear the events when starting a new profiling session
-            onUpdateEventTracks([
+            onEventTracksUpdate([
               {
-                id: "network",
+                id: "network-resource",
                 label: "Network Requests",
                 color: "rgb(64, 192, 87)",
                 events: [],
@@ -381,7 +381,7 @@ function ProfilerTimeline({
             ]);
             profilerEventTracksRef.current = [
               {
-                id: "network",
+                id: "network-resource",
                 label: "Network Requests",
                 color: "rgb(64, 192, 87)",
                 events: [],
@@ -408,7 +408,12 @@ function ProfilerTimeline({
         {isProfilingStarted ? "Stop Profiling" : "Start Profiling"}
       </button>
       {!isProfilingStarted && tracks.length > 0 && (
-        <Timeline tracks={tracks} replayer={replayer} />
+        <Timeline
+          tracks={tracks}
+          onEventClick={(event) => {
+            console.log("Clicked event:", event);
+          }}
+        />
       )}
     </div>
   );
@@ -424,7 +429,7 @@ function ProfilerTimelineEventTracks({
 }) {
   const [tracks, setTracks] = React.useState<EventTrack[]>([
     {
-      id: "network",
+      id: "network-resource",
       label: "Network Requests",
       color: "rgb(64, 192, 87)",
       events: [],
