@@ -21,7 +21,7 @@ export function Timeline({ tracks }: { tracks: EventTrack[] }) {
   // Viewport state
   const [viewport, setViewport] = useState({
     offsetX: 0,
-    scale: 1,
+    scale: 0.1,
     startTime: 0,
     endTime: 800,
   });
