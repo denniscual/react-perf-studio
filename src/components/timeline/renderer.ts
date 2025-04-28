@@ -425,12 +425,12 @@ export class TimelineRenderer {
     ctx.fillText(
       `Start: ${event.startTime}ms`,
       tooltipX + padding,
-      tooltipY + padding + 60
+      tooltipY + padding + 45
     );
     ctx.fillText(
       `Duration: ${event.duration}ms`,
       tooltipX + padding,
-      tooltipY + padding + 75
+      tooltipY + padding + 60
     );
   }
 
