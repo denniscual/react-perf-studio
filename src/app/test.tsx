@@ -343,7 +343,7 @@ function ProfilerTimeline({
         <Timeline
           tracks={tracksArray}
           onEventClick={(event) => {
-            console.log("Clicked event:", event);
+            replayer.jumpToTime(event.startTime);
           }}
         />
       )}
