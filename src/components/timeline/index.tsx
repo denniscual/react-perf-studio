@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, WheelEventHandler } from "react";
 import {
   TimelineRenderer,
   TimelineEvent,
@@ -72,36 +72,61 @@ export function Timeline({ tracks }: { tracks: EventTrack[] }) {
     rendererRef.current.drawTimeline();
   }, [tracks, viewport, mouseState]);
 
-  // Handle zooming with mouse wheel
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    // Calculate cursor position in time
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
+    const handleWheel: WheelEventHandler<HTMLCanvasElement> = (
+      e: React.WheelEvent
+    ) => {
+      e.preventDefault();
+      e.stopPropagation();
 
-    const cursorX = e.clientX - rect.left;
+      // Calculate cursor position in time
+      const rect = canvas.getBoundingClientRect();
+      if (!rect) return;
 
-    // Calculate new scale
-    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-    const newScale = Math.max(
-      MIN_SCALE,
-      Math.min(MAX_SCALE, viewport.scale * zoomFactor)
+      const cursorX = e.clientX - rect.left;
+
+      // Calculate new scale
+      const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+      const newScale = Math.max(
+        MIN_SCALE,
+        Math.min(MAX_SCALE, viewport.scale * zoomFactor)
+      );
+
+      // Calculate new offset to keep the point under cursor at the same position
+      const cursorOffsetX = cursorX;
+      const timeAtCursor =
+        viewport.startTime +
+        (cursorOffsetX + viewport.offsetX) / viewport.scale;
+      const newOffsetX =
+        (timeAtCursor - viewport.startTime) * newScale - cursorOffsetX;
+
+      setViewport((prev) => ({
+        ...prev,
+        scale: newScale,
+        offsetX: Math.max(0, newOffsetX),
+      }));
+    };
+
+    canvas.addEventListener(
+      "wheel",
+      // @ts-expect-error event type is incompatible to react wheel event type.
+      handleWheel,
+      {
+        passive: false,
+      }
     );
 
-    // Calculate new offset to keep the point under cursor at the same position
-    const cursorOffsetX = cursorX;
-    const timeAtCursor =
-      viewport.startTime + (cursorOffsetX + viewport.offsetX) / viewport.scale;
-    const newOffsetX =
-      (timeAtCursor - viewport.startTime) * newScale - cursorOffsetX;
-
-    setViewport((prev) => ({
-      ...prev,
-      scale: newScale,
-      offsetX: Math.max(0, newOffsetX),
-    }));
-  };
+    return () => {
+      canvas.removeEventListener(
+        "wheel",
+        // @ts-expect-error event type is incompatible to react wheel event type.
+        handleWheel
+      );
+    };
+  }, [viewport.offsetX, viewport.scale, viewport.startTime]);
 
   // Handle mouse down for panning
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -216,7 +241,6 @@ export function Timeline({ tracks }: { tracks: EventTrack[] }) {
         <canvas
           ref={canvasRef}
           className="w-full h-full cursor-grab active:cursor-grabbing"
-          onWheel={handleWheel}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
