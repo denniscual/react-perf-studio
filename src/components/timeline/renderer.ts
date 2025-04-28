@@ -4,7 +4,6 @@ export interface TimelineEvent {
   startTime: number;
   duration: number;
   label: string;
-  data?: any;
 }
 
 export interface EventTrack {
