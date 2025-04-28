@@ -12,7 +12,13 @@ import {
 } from "./renderer";
 
 // React component that uses TimelineRenderer
-export const Timeline = ({ tracks }: { tracks: EventTrack[] }) => {
+export const Timeline = ({
+  tracks,
+  onEventClick,
+}: {
+  tracks: EventTrack[];
+  onEventClick: (event: TimelineEvent) => void;
+}) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<TimelineRenderer | null>(null);
@@ -40,11 +46,11 @@ export const Timeline = ({ tracks }: { tracks: EventTrack[] }) => {
     const renderer = new TimelineRenderer(canvasRef.current);
     renderer.setOnEventClick((event) => {
       setClickedEvent(event);
-      console.log("Clicked event:", event);
+      onEventClick(event);
     });
 
     rendererRef.current = renderer;
-  }, []);
+  }, [onEventClick]);
 
   useEffect(() => {
     const resizeCanvas = () => {
@@ -255,9 +261,6 @@ export const Timeline = ({ tracks }: { tracks: EventTrack[] }) => {
                 </div>
                 <div className="text-sm text-gray-300 mt-1">
                   ID: {clickedEvent.id}
-                </div>
-                <div className="text-sm text-gray-300">
-                  Type: {clickedEvent.type}
                 </div>
                 <div className="text-sm text-gray-300">
                   Start: {clickedEvent.startTime}ms
