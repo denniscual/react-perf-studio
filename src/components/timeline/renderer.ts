@@ -178,7 +178,7 @@ export class TimelineRenderer {
       // Format time label based on magnitude
       let timeLabel;
       if (time >= 1000) {
-        timeLabel = `${(time / 1000).toFixed(1)}s`;
+        timeLabel = `${(time / 1000).toFixed(2)}s`;
       } else {
         timeLabel = `${time}ms`;
       }
