@@ -21,7 +21,6 @@ export default function TestList() {
                 <ProfilerControls replayer={replayer} />
               </div>
               <div className="w-1/2">
-                <Foo />
                 <TestComponent />
               </div>
             </div>
@@ -90,18 +89,6 @@ const TestComponent = memo(function TestComponent() {
     </div>
   );
 });
-
-function Foo() {
-  const [count, setCount] = React.useState(0);
-  if (count === 1) {
-    simulateDelay(40);
-  }
-  return (
-    <div>
-      <button onClick={() => setCount(count + 1)}>Increment count</button>
-    </div>
-  );
-}
 
 const List = React.memo(function List({ text }: { text: string }) {
   simulateDelay(10);
@@ -259,7 +246,7 @@ function ProfilerTimeline({
 
       return () => observer.disconnect();
     },
-    [addTimelineEvent, getRelativeTime, profilingSessionStatus]
+    [addTimelineEvent, getRelativeTime, profilingSessionStatus],
   );
 
   useEffect(
@@ -300,7 +287,7 @@ function ProfilerTimeline({
 
       return () => observer.disconnect();
     },
-    [addTimelineEvent, getRelativeTime, profilingSessionStatus]
+    [addTimelineEvent, getRelativeTime, profilingSessionStatus],
   );
 
   const tracksArray = Array.from(eventTracks.values());
@@ -364,7 +351,7 @@ function ProfilerTimelineEventTracks({
   const [eventTracks, setEventTracks] = React.useState<Map<string, EventTrack>>(
     () => {
       return initEventTracks();
-    }
+    },
   );
   return children({ eventTracks, setEventTracks });
 }
