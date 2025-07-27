@@ -118,6 +118,8 @@ const SessionRecorder = (props: SessionRecorderProps) => {
             width: 710,
             showController: true,
             autoPlay: true,
+            speedOption: [1, 0.2, 0.5, 2, 4, 8],
+            speed: 1,
           },
         });
 
