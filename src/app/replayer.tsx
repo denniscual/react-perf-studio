@@ -18,7 +18,7 @@ interface SessionRecorderProps {
     stopRecording: () => void;
     playRecording: () => void;
     events: any[];
-    playerRef: React.RefObject<HTMLDivElement>;
+    playerRef: React.RefObject<HTMLDivElement | null>;
     jumpToTime: (index: number) => void;
     currentTime: number;
     isPlaying: boolean;
