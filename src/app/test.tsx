@@ -222,7 +222,6 @@ function ProfilerTimeline({
 
           if (newStatus === "stop") {
             // Update the event eventTracks
-            debugger;
             setEventTracks(new Map(eventTracksRef.current));
             eventTracksRef.current = initEventTracks();
 
