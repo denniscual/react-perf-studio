@@ -1,7 +1,6 @@
 "use client";
 import React, { memo, useCallback, useEffect } from "react";
 import { simulateDelay } from "./util";
-import { ProfilerControls, ProfilerGraph, ProfilerProvider } from "./profiler";
 // import Timeline from "./timeline";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SessionRecorder from "./replayer";
@@ -11,56 +10,46 @@ import { EventTrack, TimelineEvent } from "@/components/timeline/renderer";
 
 export default function TestList() {
   return (
-    <ProfilerProvider>
-      <SessionRecorder>
-        {(replayer) => (
-          <div className="space-y-4 p-4">
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-lg font-bold mb-6">Profiler</h2>
-                <ProfilerControls replayer={replayer} />
-              </div>
-              <div className="w-1/2">
-                <TestComponent />
-              </div>
-            </div>
-            <div className="flex flex-row space-x-6">
-              <div className="w-1/2">
-                <div ref={replayer.playerRef}>
-                  {replayer.events.length > 0 && (
-                    <div className="w-full h-auto border border-gray-300 rounded-lg bg-white shadow" />
-                  )}
-                </div>
-              </div>
-              <div className="w-1/2">
-                <Tabs defaultValue="timeline" className="w-full">
-                  <TabsList>
-                    <TabsTrigger value="timeline">Timeline</TabsTrigger>
-                    <TabsTrigger value="commits-graph">
-                      Commits Graph
-                    </TabsTrigger>
-                  </TabsList>
-                  <ProfilerTimelineEventTracks>
-                    {({ eventTracks, setEventTracks }) => (
-                      <TabsContent value="timeline">
-                        <ProfilerTimeline
-                          eventTracks={eventTracks}
-                          setEventTracks={setEventTracks}
-                          replayer={replayer}
-                        />
-                      </TabsContent>
-                    )}
-                  </ProfilerTimelineEventTracks>
-                  <TabsContent value="commits-graph">
-                    <ProfilerGraph />
-                  </TabsContent>
-                </Tabs>
-              </div>
+    <SessionRecorder>
+      {(replayer) => (
+        <div className="space-y-4 p-4">
+          <div className="space-y-6">
+            <div className="w-1/2">
+              <TestComponent />
             </div>
           </div>
-        )}
-      </SessionRecorder>
-    </ProfilerProvider>
+          <div className="flex flex-row space-x-6">
+            <div className="w-1/2">
+              <div ref={replayer.playerRef}>
+                {replayer.events.length > 0 && (
+                  <div className="w-full h-auto border border-gray-300 rounded-lg bg-white shadow" />
+                )}
+              </div>
+            </div>
+            <div className="w-1/2">
+              <Tabs defaultValue="timeline" className="w-full">
+                <TabsList>
+                  <TabsTrigger value="timeline">Timeline</TabsTrigger>
+                  <TabsTrigger value="commits-graph">Commits Graph</TabsTrigger>
+                </TabsList>
+                <ProfilerTimelineEventTracks>
+                  {({ eventTracks, setEventTracks }) => (
+                    <TabsContent value="timeline">
+                      <ProfilerTimeline
+                        eventTracks={eventTracks}
+                        setEventTracks={setEventTracks}
+                        replayer={replayer}
+                      />
+                    </TabsContent>
+                  )}
+                </ProfilerTimelineEventTracks>
+                <TabsContent value="commits-graph">Commits graph</TabsContent>
+              </Tabs>
+            </div>
+          </div>
+        </div>
+      )}
+    </SessionRecorder>
   );
 }
 
