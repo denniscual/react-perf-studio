@@ -15,9 +15,13 @@ import {
 export const Timeline = ({
   tracks,
   onEventClick,
+  currentTime = 0,
+  isPlaying = false,
 }: {
   tracks: EventTrack[];
   onEventClick: (event: TimelineEvent) => void;
+  currentTime?: number;
+  isPlaying?: boolean;
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -82,8 +86,9 @@ export const Timeline = ({
     rendererRef.current.setTracks(tracks);
     rendererRef.current.setViewport(viewport);
     rendererRef.current.setMouseState(mouseState);
+    rendererRef.current.setCurrentTime(currentTime, isPlaying);
     rendererRef.current.drawTimeline();
-  }, [tracks, viewport, mouseState]);
+  }, [tracks, viewport, mouseState, currentTime, isPlaying]);
 
   useEffect(() => {
     const canvas = canvasRef.current;

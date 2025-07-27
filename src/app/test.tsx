@@ -253,6 +253,8 @@ function ProfilerTimeline({
           onEventClick={(event) => {
             replayer.jumpToTime(event.startTime);
           }}
+          currentTime={replayer.currentTime}
+          isPlaying={replayer.isPlaying}
         />
       )}
     </div>

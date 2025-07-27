@@ -54,7 +54,8 @@ export class TimelineRenderer {
     hoverPosition: { x: 0, y: 0 },
   };
   private onEventClick: ((event: TimelineEvent) => void) | null = null;
-  private currentTime: number = 100; // Test time indicator at 100ms
+  private currentTime: number = 0;
+  private isPlaying: boolean = false;
 
   constructor(canvas: HTMLCanvasElement | null) {
     this.setCanvas(canvas);
@@ -79,6 +80,11 @@ export class TimelineRenderer {
 
   setOnEventClick(callback: (event: TimelineEvent) => void) {
     this.onEventClick = callback;
+  }
+
+  setCurrentTime(time: number, isPlaying: boolean) {
+    this.currentTime = time;
+    this.isPlaying = isPlaying;
   }
 
   // Find the event at a specific position
@@ -381,7 +387,7 @@ export class TimelineRenderer {
 
   // Draw time indicator
   private drawTimeIndicator() {
-    if (!this.ctx || !this.canvas) return;
+    if (!this.ctx || !this.canvas || this.currentTime < 0) return;
 
     const ctx = this.ctx;
     const indicatorX = this.timeToPixel(this.currentTime);
@@ -389,18 +395,21 @@ export class TimelineRenderer {
     // Only draw if the indicator is within the visible area
     if (indicatorX < 0 || indicatorX > this.canvas.width) return;
 
+    // Choose color based on playing state
+    const color = this.isPlaying ? "#ff3333" : "#ff8844"; // Bright red when playing, orange when paused
+
     // Draw the vertical line
     ctx.beginPath();
     ctx.moveTo(indicatorX, TIME_MARKERS_HEIGHT);
     ctx.lineTo(indicatorX, this.canvas.height);
-    ctx.strokeStyle = "#ff4444"; // Red line
+    ctx.strokeStyle = color;
     ctx.lineWidth = 2;
     ctx.stroke();
 
     // Draw a circle at the top
     ctx.beginPath();
     ctx.arc(indicatorX, TIME_MARKERS_HEIGHT + 8, 4, 0, 2 * Math.PI);
-    ctx.fillStyle = "#ff4444";
+    ctx.fillStyle = color;
     ctx.fill();
 
     // Draw time label
@@ -411,7 +420,7 @@ export class TimelineRenderer {
     ctx.fillRect(indicatorX - 25, TIME_MARKERS_HEIGHT + 15, 50, 16);
     ctx.fillStyle = "#fff";
     ctx.fillText(
-      `${this.currentTime}ms`,
+      `${this.currentTime.toFixed(0)}ms`,
       indicatorX,
       TIME_MARKERS_HEIGHT + 26
     );
