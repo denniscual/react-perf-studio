@@ -2,7 +2,6 @@
 import React, { memo, useCallback, useEffect } from "react";
 import { simulateDelay } from "./util";
 // import Timeline from "./timeline";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SessionRecorder from "./replayer";
 import { scan } from "react-scan";
 import { Timeline } from "@/components/timeline";
@@ -27,24 +26,15 @@ export default function TestList() {
               </div>
             </div>
             <div className="w-1/2">
-              <Tabs defaultValue="timeline" className="w-full">
-                <TabsList>
-                  <TabsTrigger value="timeline">Timeline</TabsTrigger>
-                  <TabsTrigger value="commits-graph">Commits Graph</TabsTrigger>
-                </TabsList>
-                <ProfilerTimelineEventTracks>
-                  {({ eventTracks, setEventTracks }) => (
-                    <TabsContent value="timeline">
-                      <ProfilerTimeline
-                        eventTracks={eventTracks}
-                        setEventTracks={setEventTracks}
-                        replayer={replayer}
-                      />
-                    </TabsContent>
-                  )}
-                </ProfilerTimelineEventTracks>
-                <TabsContent value="commits-graph">Commits graph</TabsContent>
-              </Tabs>
+              <ProfilerTimelineEventTracks>
+                {({ eventTracks, setEventTracks }) => (
+                  <ProfilerTimeline
+                    eventTracks={eventTracks}
+                    setEventTracks={setEventTracks}
+                    replayer={replayer}
+                  />
+                )}
+              </ProfilerTimelineEventTracks>
             </div>
           </div>
         </div>
