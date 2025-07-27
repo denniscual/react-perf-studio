@@ -123,8 +123,7 @@ const SessionRecorder = (props: SessionRecorderProps) => {
 
         // Listen for time updates from the player
         player.addEventListener("ui-update-current-time", (event) => {
-          console.log("ui-update-current-time:", event);
-          if (event && typeof event.payload === 'number') {
+          if (event && typeof event.payload === "number") {
             setCurrentTime(event.payload);
           }
         });
@@ -176,7 +175,7 @@ const SessionRecorder = (props: SessionRecorderProps) => {
       setCurrentTime(time);
       setIsPlaying(false);
     },
-    [playerInstance]
+    [playerInstance],
   );
 
   // Export all necessary functions and state
