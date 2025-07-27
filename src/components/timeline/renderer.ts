@@ -54,6 +54,7 @@ export class TimelineRenderer {
     hoverPosition: { x: 0, y: 0 },
   };
   private onEventClick: ((event: TimelineEvent) => void) | null = null;
+  private currentTime: number = 100; // Test time indicator at 100ms
 
   constructor(canvas: HTMLCanvasElement | null) {
     this.setCanvas(canvas);
@@ -147,6 +148,9 @@ export class TimelineRenderer {
 
     // Draw events
     this.drawEvents();
+
+    // Draw time indicator
+    this.drawTimeIndicator();
 
     // Draw tooltip if hovering over an event
     if (this.mouseState.isHovering && this.mouseState.hoverEvent) {
@@ -373,6 +377,44 @@ export class TimelineRenderer {
     }
 
     return truncated + (truncated.length < text.length ? "..." : "");
+  }
+
+  // Draw time indicator
+  private drawTimeIndicator() {
+    if (!this.ctx || !this.canvas) return;
+
+    const ctx = this.ctx;
+    const indicatorX = this.timeToPixel(this.currentTime);
+
+    // Only draw if the indicator is within the visible area
+    if (indicatorX < 0 || indicatorX > this.canvas.width) return;
+
+    // Draw the vertical line
+    ctx.beginPath();
+    ctx.moveTo(indicatorX, TIME_MARKERS_HEIGHT);
+    ctx.lineTo(indicatorX, this.canvas.height);
+    ctx.strokeStyle = "#ff4444"; // Red line
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Draw a circle at the top
+    ctx.beginPath();
+    ctx.arc(indicatorX, TIME_MARKERS_HEIGHT + 8, 4, 0, 2 * Math.PI);
+    ctx.fillStyle = "#ff4444";
+    ctx.fill();
+
+    // Draw time label
+    ctx.fillStyle = "#fff";
+    ctx.font = "11px Arial";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+    ctx.fillRect(indicatorX - 25, TIME_MARKERS_HEIGHT + 15, 50, 16);
+    ctx.fillStyle = "#fff";
+    ctx.fillText(
+      `${this.currentTime}ms`,
+      indicatorX,
+      TIME_MARKERS_HEIGHT + 26
+    );
   }
 
   // Draw tooltip for hovered event
