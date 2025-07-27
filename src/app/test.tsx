@@ -136,10 +136,8 @@ function ProfilerTimeline({
       }
 
       const observer = new PerformanceObserver((list) => {
-        list.getEntries().forEach((entry, idx) => {
-          if (!["input", "click"].includes(entry.name)) {
-            return;
-          }
+        list.getEntries().forEach((entry) => {
+          const id = Date.now();
 
           // Adjust the times relative to our baseline
           const relativeStartTime = getRelativeTime(entry.startTime);
@@ -147,7 +145,7 @@ function ProfilerTimeline({
           if (relativeStartTime < 0) return;
 
           const event = {
-            id: `${entry.name}-${idx}`,
+            id: `${entry.name}-${id}`,
             label: entry.name,
             startTime: roundTime(relativeStartTime),
             endTime: roundTime(relativeStartTime + entry.duration),
@@ -224,6 +222,7 @@ function ProfilerTimeline({
 
           if (newStatus === "stop") {
             // Update the event eventTracks
+            debugger;
             setEventTracks(new Map(eventTracksRef.current));
             eventTracksRef.current = initEventTracks();
 
