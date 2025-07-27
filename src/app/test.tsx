@@ -98,6 +98,9 @@ function ProfilerTimeline({
     eventTracksRef.current = new Map(eventTracks);
   }, []);
 
+  // TODO:
+  // - Use bippy package instead of react-scan to access lower-level apis like traverseRenderedFibers.
+  // - for rendered events, add "Rendering reason" feature. This tells why this Component gets rerendered. E.g the props/state/context change.
   useEffect(() => {
     scan({
       enabled: profilingSessionStatus === "pending",
@@ -225,7 +228,10 @@ function ProfilerTimeline({
             setEventTracks(new Map(eventTracksRef.current));
             eventTracksRef.current = initEventTracks();
 
+            // TODO:
+            // - fix issue of stop and start recording again. Currently it throws an error when starting new session "Error: Failed to execute 'removeChild' on 'Node': The node to be removed is not a child of this node."
             replayer.stopRecording();
+
             // play recording. put it into timeout callback to make sure
             // the needed state for playing recording are all set.
             // flushSync is not working.
