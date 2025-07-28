@@ -173,7 +173,7 @@ function ProfilerTimeline({
             const { selfTime } = getTimings(fiber);
             const startTime = getRelativeTime(fiber.actualStartTime);
 
-            // if (startTime < 0 || selfTime < 1) return;
+            if (startTime < 0 || selfTime < 1) return;
 
             const componentStateVariables = getAllComponentState(fiber);
             console.log({
