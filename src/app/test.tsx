@@ -5,6 +5,8 @@ import {
   traverseRenderedFibers,
   getTimings,
   getDisplayName,
+  Fiber,
+  MemoizedState,
 } from "bippy"; // must be imported BEFORE react
 import React, { useCallback, useEffect } from "react";
 import SessionRecorder from "./replayer";
@@ -157,6 +159,8 @@ function ProfilerTimeline({
   // - Use bippy package instead of react-scan to access lower-level apis like traverseRenderedFibers.
   // - for rendered events, add "Rendering reason" feature. This tells why this Component gets rerendered. E.g the props/state/context change.
   useEffect(() => {
+    if (profilingSessionStatus !== "pending") return;
+
     instrument(
       secure({
         onCommitFiberRoot(_, root) {
@@ -165,16 +169,22 @@ function ProfilerTimeline({
               return;
             }
 
-            const displayName = getDisplayName(fiber);
+            const displayName = getDisplayName(fiber) ?? "Unknown";
             const { selfTime } = getTimings(fiber);
-
             const startTime = getRelativeTime(fiber.actualStartTime);
 
-            if (startTime < 0 || selfTime < 1) return;
+            // if (startTime < 0 || selfTime < 1) return;
+
+            const componentStateVariables = getAllComponentState(fiber);
+            console.log({
+              componentStateVariables,
+              displayName,
+              fiber,
+            });
 
             const event = {
-              id: `${displayName ?? "Unknown"}-${roundTime(startTime)}`,
-              label: displayName ?? "Unknown",
+              id: `${displayName}-${roundTime(startTime)}`,
+              label: displayName,
               startTime: roundTime(startTime),
               endTime: roundTime(startTime + selfTime),
               duration: roundTime(selfTime),
@@ -375,4 +385,42 @@ function isResourceIncludedInWhiteList(entry: PerformanceResourceTiming) {
 
 function roundTime(time: number): number {
   return Math.round(time * 100) / 100;
+}
+
+function getAllComponentState(fiber: Fiber) {
+  const statefulHooks = ["useState", "useReducer"];
+  const states: {
+    id: number;
+    type: string;
+    prev: unknown;
+    next: unknown;
+  }[] = [];
+
+  // Get the hook linked list from fiber.memoizedState
+  let nextState: MemoizedState | undefined | null = fiber.memoizedState;
+  let prevState: MemoizedState | undefined | null =
+    fiber.alternate?.memoizedState;
+  let hookIndex = 0;
+
+  // Get debug hook types if available (DEV mode)
+  const debugHookTypes = fiber._debugHookTypes || [];
+
+  while (nextState || prevState) {
+    const hookType = debugHookTypes[hookIndex] || "unknown";
+
+    if (statefulHooks.includes(hookType)) {
+      states.push({
+        id: hookIndex + 1,
+        type: hookType,
+        prev: prevState?.memoizedState, // state value
+        next: nextState?.memoizedState, // state value
+      });
+    }
+
+    nextState = nextState?.next;
+    prevState = prevState?.next;
+    hookIndex++;
+  }
+
+  return states;
 }
