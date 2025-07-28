@@ -34,7 +34,7 @@ export const TRACK_PADDING = 10;
 export const TIME_MARKERS_HEIGHT = 30;
 export const LEGEND_HEIGHT = 30;
 export const MIN_SCALE = 0.1;
-export const MAX_SCALE = 10;
+export const MAX_SCALE = 100;
 
 export class TimelineRenderer {
   private canvas: HTMLCanvasElement | null = null;
@@ -185,7 +185,7 @@ export class TimelineRenderer {
     const visibleTimeRange = visibleEndTime - visibleStartTime;
 
     // Adjust interval based on zoom level
-    // We want roughly 5-10 markers visible at any zoom level
+    // We want roughly 5-10 markers visible at any zoom level, but allow finer intervals for high zoom
     const idealMarkerCount = 8;
     const idealInterval = visibleTimeRange / idealMarkerCount;
 
@@ -195,11 +195,22 @@ export class TimelineRenderer {
     ];
 
     // Dynamically determine appropriate time interval based on zoom and duration
-    const timeInterval = standardIntervals.reduce((prev, curr) =>
-      Math.abs(curr - idealInterval) < Math.abs(prev - idealInterval)
-        ? curr
-        : prev
-    );
+    // Calculate the ideal interval to maintain 8-10 markers
+    let timeInterval = Math.ceil(idealInterval);
+    
+    // For very fine zoom levels, ensure we can still show increments of 1
+    if (timeInterval < 1) {
+      timeInterval = 1;
+    }
+    
+    // If calculated interval would create too many markers, find the closest standard interval
+    if (visibleTimeRange / timeInterval > 15) {
+      timeInterval = standardIntervals.reduce((prev, curr) =>
+        Math.abs(curr - idealInterval) < Math.abs(prev - idealInterval)
+          ? curr
+          : prev
+      );
+    }
 
     // Draw time markers
     ctx.fillStyle = "#888";
