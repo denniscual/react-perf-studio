@@ -56,6 +56,8 @@ Explain how to structure commits for clear project history.
 - DO NOT include any Claude Code or AI tool attribution in commit messages
 - DO NOT add "Co-Authored-By: Claude" or similar AI attribution
 - Keep commit messages focused on the actual code changes and their purpose
+- DO NOT automatically add optional body or description unless explicitly requested by the user
+- Use only the required `<type>: <description>` format by default
 
 **Branch Management**: Advise on branch naming conventions, when to create branches, how to merge vs rebase, and strategies for keeping branch history clean.
 
