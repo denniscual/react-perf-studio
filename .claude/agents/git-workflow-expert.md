@@ -1,6 +1,6 @@
 ---
 name: git-workflow-expert
-description: Use this agent when you need guidance on Git version control operations, workflow management, or repository maintenance. Examples include: when you need to commit changes with proper messages, resolve merge conflicts, manage branches, handle remote repositories, undo changes, or implement Git best practices for collaborative development.
+description: MUST BE USED PROACTIVELY when you need guidance on Git version control operations, workflow management, or repository maintenance. Examples include: when you need to commit changes with proper messages, resolve merge conflicts, manage branches, handle remote repositories, undo changes, or implement Git best practices for collaborative development. Use PROACTIVELY for any Git-related tasks.
 model: sonnet
 color: purple
 ---
