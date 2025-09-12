@@ -28,19 +28,15 @@ export default function TestList() {
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
             React Performance Monitor
           </h1>
-          <p className="text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-            Comprehensive timeline-based profiling tool with real-time visualization of render timings, 
-            user inputs, and network resources synchronized with session recording.
-          </p>
         </div>
 
         <Separator />
 
         <SessionRecorder>
           {(replayer) => (
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-              {/* Test Playground Section */}
-              <Card className="h-fit">
+            <div className="space-y-6">
+              {/* Test Playground Section - Full Width */}
+              <Card>
                 <CardHeader>
                   <div className="flex items-center gap-2">
                     <Activity className="h-5 w-5 text-blue-600" />
@@ -55,127 +51,124 @@ export default function TestList() {
                 </CardContent>
               </Card>
 
-              {/* Right Column - Profiler and Session Recorder */}
-              <div className="space-y-6">
-                {/* Profiler Controls Section */}
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center gap-2">
-                      <Timer className="h-5 w-5 text-green-600" />
-                      <CardTitle>Performance Profiler</CardTitle>
-                    </div>
-                    <CardDescription>
-                      Start profiling to capture render timings, user interactions, and network requests
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ProfilerTimelineEventTracks>
-                      {({
-                        eventTracks,
-                        setEventTracks,
-                        profilingSessionStatus,
-                        setProfilingSessionStatus,
-                        eventTracksRef,
-                      }) => (
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Badge 
-                                variant={profilingSessionStatus === "pending" ? "destructive" : "secondary"}
-                                className="capitalize"
-                              >
-                                {profilingSessionStatus === "pending" ? "Recording" : "Idle"}
-                              </Badge>
-                              {profilingSessionStatus === "pending" && (
-                                <div className="flex items-center gap-1 text-sm text-slate-600">
-                                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                                  Live Recording
-                                </div>
-                              )}
-                            </div>
-                            <Button
-                              onClick={() => {
-                                const newStatus =
-                                  profilingSessionStatus !== "pending"
-                                    ? "pending"
-                                    : "stop";
-
-                                if (newStatus === "stop") {
-                                  setEventTracks(new Map(eventTracksRef.current));
-                                  eventTracksRef.current = initEventTracks();
-                                  replayer.stopRecording();
-
-                                  setTimeout(() => {
-                                    replayer.playRecording();
-                                  }, 0);
-                                } else {
-                                  setEventTracks(initEventTracks());
-                                  eventTracksRef.current = initEventTracks();
-                                  replayer.startRecording();
-                                }
-
-                                setProfilingSessionStatus(newStatus);
-                              }}
-                              variant={profilingSessionStatus !== "pending" ? "default" : "destructive"}
-                              className="min-w-32"
+              {/* Performance Profiler Section - Full Width */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Timer className="h-5 w-5 text-green-600" />
+                    <CardTitle>Performance Profiler</CardTitle>
+                  </div>
+                  <CardDescription>
+                    Start profiling to capture render timings, user interactions, and network requests
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ProfilerTimelineEventTracks>
+                    {({
+                      eventTracks,
+                      setEventTracks,
+                      profilingSessionStatus,
+                      setProfilingSessionStatus,
+                      eventTracksRef,
+                    }) => (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Badge 
+                              variant={profilingSessionStatus === "pending" ? "destructive" : "secondary"}
+                              className="capitalize"
                             >
-                              {profilingSessionStatus !== "pending" ? (
-                                <>
-                                  <Play className="w-4 h-4 mr-2" />
-                                  Start Profiling
-                                </>
-                              ) : (
-                                <>
-                                  <Square className="w-4 h-4 mr-2" />
-                                  Stop Profiling
-                                </>
-                              )}
-                            </Button>
+                              {profilingSessionStatus === "pending" ? "Recording" : "Idle"}
+                            </Badge>
+                            {profilingSessionStatus === "pending" && (
+                              <div className="flex items-center gap-1 text-sm text-slate-600">
+                                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                                Live Recording
+                              </div>
+                            )}
                           </div>
-                          <ProfilerTimeline
-                            eventTracks={eventTracks}
-                            setEventTracks={setEventTracks}
-                            profilingSessionStatus={profilingSessionStatus}
-                            eventTracksRef={eventTracksRef}
-                            replayer={replayer}
-                          />
+                          <Button
+                            onClick={() => {
+                              const newStatus =
+                                profilingSessionStatus !== "pending"
+                                  ? "pending"
+                                  : "stop";
+
+                              if (newStatus === "stop") {
+                                setEventTracks(new Map(eventTracksRef.current));
+                                eventTracksRef.current = initEventTracks();
+                                replayer.stopRecording();
+
+                                setTimeout(() => {
+                                  replayer.playRecording();
+                                }, 0);
+                              } else {
+                                setEventTracks(initEventTracks());
+                                eventTracksRef.current = initEventTracks();
+                                replayer.startRecording();
+                              }
+
+                              setProfilingSessionStatus(newStatus);
+                            }}
+                            variant={profilingSessionStatus !== "pending" ? "default" : "destructive"}
+                            className="min-w-32"
+                          >
+                            {profilingSessionStatus !== "pending" ? (
+                              <>
+                                <Play className="w-4 h-4 mr-2" />
+                                Start Profiling
+                              </>
+                            ) : (
+                              <>
+                                <Square className="w-4 h-4 mr-2" />
+                                Stop Profiling
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                        <ProfilerTimeline
+                          eventTracks={eventTracks}
+                          setEventTracks={setEventTracks}
+                          profilingSessionStatus={profilingSessionStatus}
+                          eventTracksRef={eventTracksRef}
+                          replayer={replayer}
+                        />
+                      </div>
+                    )}
+                  </ProfilerTimelineEventTracks>
+                </CardContent>
+              </Card>
+
+              {/* Session Recorder Section - Full Width */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Monitor className="h-5 w-5 text-purple-600" />
+                    <CardTitle>Session Replay</CardTitle>
+                  </div>
+                  <CardDescription>
+                    DOM recording synchronized with performance timeline for debugging
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg">
+                    <div ref={replayer.playerRef} className="min-h-[300px]">
+                      {replayer.events.length === 0 && (
+                        <div className="flex items-center justify-center h-64 text-slate-500">
+                          <div className="text-center space-y-2">
+                            <Monitor className="w-12 h-12 mx-auto opacity-50" />
+                            <p>No recording available</p>
+                            <p className="text-sm">Start profiling to begin session recording</p>
+                          </div>
                         </div>
                       )}
-                    </ProfilerTimelineEventTracks>
-                  </CardContent>
-                </Card>
-
-                {/* Session Recorder Section */}
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center gap-2">
-                      <Monitor className="h-5 w-5 text-purple-600" />
-                      <CardTitle>Session Replay</CardTitle>
+                      {replayer.events.length > 0 && (
+                        <div className="w-full h-auto bg-white dark:bg-slate-800 rounded-lg" />
+                      )}
                     </div>
-                    <CardDescription>
-                      DOM recording synchronized with performance timeline for debugging
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg">
-                      <div ref={replayer.playerRef} className="min-h-[300px]">
-                        {replayer.events.length === 0 && (
-                          <div className="flex items-center justify-center h-64 text-slate-500">
-                            <div className="text-center space-y-2">
-                              <Monitor className="w-12 h-12 mx-auto opacity-50" />
-                              <p>No recording available</p>
-                              <p className="text-sm">Start profiling to begin session recording</p>
-                            </div>
-                          </div>
-                        )}
-                        {replayer.events.length > 0 && (
-                          <div className="w-full h-auto bg-white dark:bg-slate-800 rounded-lg" />
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
         </SessionRecorder>
