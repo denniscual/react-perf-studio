@@ -1,5 +1,5 @@
 {
-  "name": "react-monitoring-tool",
+  "name": "react-perf-studio",
   "version": "0.1.0",
   "private": true,
   "scripts": {
