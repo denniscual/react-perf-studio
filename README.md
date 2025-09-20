@@ -2,6 +2,8 @@
 
 A React performance monitoring tool, featuring real-time timeline profiling and interactive session recording.
 
+https://github.com/user-attachments/assets/185b0cb5-5dc9-4924-baa2-5eddaed09085
+
 ## Overview
 
 React Perf Studio provides developers with insights into React application performance through:
