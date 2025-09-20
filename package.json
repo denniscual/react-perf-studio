@@ -23,7 +23,7 @@
     "puppeteer": "^24.4.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-scan": "file:/Users/denniscual/Desktop/projects/open-source/react-scan/packages/scan",
+    "react-scan": "file:./react-scan-dist",
     "recharts": "^2.15.1",
     "rrweb": "2.0.0-alpha.4",
     "rrweb-player": "1.0.0-alpha.4",
