@@ -35,7 +35,8 @@ export const TestComponent = memo(function TestComponent() {
           className="text-base"
         />
         <p className="text-sm text-slate-500">
-          Typing triggers component re-renders and performance measurements. Try typing &ldquo;y&rdquo; to render additional slow components.
+          Typing triggers component re-renders and performance measurements. Try
+          typing &ldquo;y&rdquo; to render additional slow components.
         </p>
       </div>
 
@@ -62,9 +63,7 @@ const List = React.memo(function List({ text }: { text: string }) {
   }
   return (
     <div className="space-y-3">
-      <div className="grid gap-2">
-        {items}
-      </div>
+      <div className="grid gap-2">{items}</div>
       {text.includes("y") && (
         <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-lg">
           <div className="flex items-center gap-2 mb-2">
@@ -84,7 +83,8 @@ function SlowComponent() {
   simulateDelay(120);
   return (
     <div className="text-sm text-amber-700 dark:text-amber-300">
-      This component has a 120ms simulated delay to demonstrate slow rendering performance.
+      This component has a 120ms simulated delay to demonstrate slow rendering
+      performance.
     </div>
   );
 }
@@ -103,9 +103,6 @@ function SlowItem({ text, index }: { text: string; index: number }) {
           {text || "Empty"}
         </span>
       </div>
-      <Badge variant="outline" className="text-xs">
-        5ms delay
-      </Badge>
     </div>
   );
 }
