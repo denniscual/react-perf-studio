@@ -35,7 +35,7 @@ const PROFILER_STORAGE_DIR = path.join(process.cwd(), "profiler-data");
 async function ensureDirectoryExists() {
   try {
     await fs.access(PROFILER_STORAGE_DIR);
-  } catch (error) {
+  } catch {
     // Directory doesn't exist, create it
     await fs.mkdir(PROFILER_STORAGE_DIR, { recursive: true });
     console.log(`Created profiler data directory: ${PROFILER_STORAGE_DIR}`);
@@ -45,7 +45,7 @@ async function ensureDirectoryExists() {
 // Helper function to save session to a file
 async function saveSessionToFile(
   sessionId: string,
-  session: SavedProfilerSession
+  session: SavedProfilerSession,
 ): Promise<void> {
   await ensureDirectoryExists();
   const filePath = path.join(PROFILER_STORAGE_DIR, `${sessionId}.json`);
@@ -54,7 +54,7 @@ async function saveSessionToFile(
 
 // Helper function to read session from a file
 async function readSessionFromFile(
-  sessionId: string
+  sessionId: string,
 ): Promise<SavedProfilerSession | null> {
   try {
     const filePath = path.join(PROFILER_STORAGE_DIR, `${sessionId}.json`);
@@ -91,7 +91,7 @@ async function listAllSessions(): Promise<
             console.error(`Error reading session file ${file}:`, error);
             return null;
           }
-        })
+        }),
     );
 
     // Filter out any nulls from failed reads
@@ -108,7 +108,7 @@ async function listAllSessions(): Promise<
 
 // Helper function to find a session by name
 async function findSessionByName(
-  name: string
+  name: string,
 ): Promise<SavedProfilerSession | null> {
   const sessions = await listAllSessions();
   const sessionWithName = sessions.find((session) => session.name === name);
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
     if (!body.name || !body.data) {
       return NextResponse.json(
         { error: "Missing required fields: name and data" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
     if (!data.commits || !Array.isArray(data.commits)) {
       return NextResponse.json(
         { error: "Invalid profiler data format" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
     console.error("Error saving profiler data:", error);
     return NextResponse.json(
       { error: "Failed to save profiler data" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -183,7 +183,7 @@ export async function GET(request: NextRequest) {
       if (!session) {
         return NextResponse.json(
           { error: `Profiler session with name '${name}' not found` },
-          { status: 404 }
+          { status: 404 },
         );
       }
       return NextResponse.json(session);
@@ -195,7 +195,7 @@ export async function GET(request: NextRequest) {
       if (!session) {
         return NextResponse.json(
           { error: "Profiler session not found" },
-          { status: 404 }
+          { status: 404 },
         );
       }
       return NextResponse.json(session);
@@ -209,7 +209,7 @@ export async function GET(request: NextRequest) {
     console.error("Error retrieving profiler data:", error);
     return NextResponse.json(
       { error: "Failed to retrieve profiler data" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -223,7 +223,7 @@ export async function DELETE(request: NextRequest) {
     if (!id) {
       return NextResponse.json(
         { error: "Session ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -231,7 +231,7 @@ export async function DELETE(request: NextRequest) {
 
     try {
       await fs.access(filePath);
-    } catch (error) {
+    } catch {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
@@ -245,7 +245,7 @@ export async function DELETE(request: NextRequest) {
     console.error("Error deleting profiler session:", error);
     return NextResponse.json(
       { error: "Failed to delete profiler session" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

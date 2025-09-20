@@ -40,7 +40,7 @@ export function useProfilerProvider() {
   const ctx = React.useContext(ProfilerProviderContext);
   if (!ctx) {
     throw new Error(
-      '"useProfilerProvider" must be used within "ProfilerProvider"'
+      '"useProfilerProvider" must be used within "ProfilerProvider"',
     );
   }
   return ctx;
@@ -94,7 +94,7 @@ export const ProfilerControls = React.memo(function ProfilerControls({
     Array<{ id: string; name: string; createdAt: string }>
   >([]);
   const [selectedSession, setSelectedSession] = React.useState<string | null>(
-    null
+    null,
   );
 
   const handleToggleProfiling = React.useCallback(() => {
@@ -168,13 +168,13 @@ export const ProfilerControls = React.memo(function ProfilerControls({
         } catch (error) {
           console.error("Failed to parse profiler data:", error);
           alert(
-            "Invalid profiler data format. Please select a valid JSON file."
+            "Invalid profiler data format. Please select a valid JSON file.",
           );
         }
       };
       reader.readAsText(file);
     },
-    []
+    [],
   );
 
   // New function to handle saving profiler data to the API
@@ -195,7 +195,7 @@ export const ProfilerControls = React.memo(function ProfilerControls({
           ([time, profiles]) => ({
             id: time,
             profiles,
-          })
+          }),
         ),
       };
 
@@ -223,7 +223,7 @@ export const ProfilerControls = React.memo(function ProfilerControls({
     } catch (error) {
       console.error("Error saving profiler data:", error);
       setSaveError(
-        error instanceof Error ? error.message : "Unknown error occurred"
+        error instanceof Error ? error.message : "Unknown error occurred",
       );
     } finally {
       setIsSaving(false);
@@ -250,7 +250,7 @@ export const ProfilerControls = React.memo(function ProfilerControls({
     } catch (error) {
       console.error("Error fetching profiler sessions:", error);
       setLoadError(
-        error instanceof Error ? error.message : "Failed to fetch sessions"
+        error instanceof Error ? error.message : "Failed to fetch sessions",
       );
     } finally {
       setIsLoading(false);
@@ -270,7 +270,7 @@ export const ProfilerControls = React.memo(function ProfilerControls({
 
     try {
       const response = await fetch(
-        `/api/profiler?name=${encodeURIComponent(selectedSession)}`
+        `/api/profiler?name=${encodeURIComponent(selectedSession)}`,
       );
 
       if (!response.ok) {
@@ -287,7 +287,7 @@ export const ProfilerControls = React.memo(function ProfilerControls({
 
       if (success) {
         setLoadSuccess(
-          `Successfully loaded profiler session: ${selectedSession}`
+          `Successfully loaded profiler session: ${selectedSession}`,
         );
         setShowLoadDialog(false);
       } else {
@@ -296,7 +296,7 @@ export const ProfilerControls = React.memo(function ProfilerControls({
     } catch (error) {
       console.error("Error loading profiler session:", error);
       setLoadError(
-        error instanceof Error ? error.message : "Unknown error occurred"
+        error instanceof Error ? error.message : "Unknown error occurred",
       );
     } finally {
       setIsLoading(false);
@@ -554,7 +554,7 @@ export function ProfilerGraph() {
   const { commits: commitsMap } = useSyncExternalStore(
     profilerDataStore.subscribe,
     profilerDataStore.getSnapshot,
-    profilerDataStore.getSnapshot
+    profilerDataStore.getSnapshot,
   );
   const { isProfilingStarted } = useProfilerProvider();
   const [selectedCommitIndex, setSelectedCommitIndex] = React.useState(0);
@@ -563,7 +563,7 @@ export function ProfilerGraph() {
   const commits: CommitData[] = useMemo(() => {
     return Array.from(commitsMap.entries()).map(([commitTime, profiles]) => {
       const slowestProfile = [...profiles].sort(
-        (a, b) => b.actualDuration - a.actualDuration
+        (a, b) => b.actualDuration - a.actualDuration,
       )[0];
       const status = getDurationStatus(slowestProfile.actualDuration);
       return {
@@ -933,10 +933,7 @@ type ProfilerSession = {
   commits: ProfilerRecords;
   renders: ProfilerRenders;
 };
-type ProfilerSubscriber = (
-  // eslint-disable-next-line no-unused-vars
-  session: ProfilerSession
-) => void;
+type ProfilerSubscriber = (session: ProfilerSession) => void;
 type ProfilerExportedData = {
   commits: {
     id: string; // This is the commit time.
@@ -977,7 +974,7 @@ class ProfilerDataStore {
     actualDuration,
     baseDuration,
     startTime,
-    commitTime
+    commitTime,
   ) => {
     if (!this.isProfilingStarted) {
       return;
@@ -1036,7 +1033,7 @@ class ProfilerDataStore {
 
   setRenders = (profiles: Profiles) => {
     const sortedProfiles = [...profiles].sort(
-      (a, b) => a.startTime - b.startTime
+      (a, b) => a.startTime - b.startTime,
     );
 
     return sortedProfiles.reduce((acc, value) => {
@@ -1095,7 +1092,7 @@ class ProfilerDataStore {
       // Import renders
 
       console.log(
-        `[Profiler] Imported data with ${this.session.commits.size} commits`
+        `[Profiler] Imported data with ${this.session.commits.size} commits`,
       );
 
       // Notify subscribers of the change

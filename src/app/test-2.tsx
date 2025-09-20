@@ -4,7 +4,7 @@ import { simulateDelay } from "./util";
 
 export default function SearchList() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [isPending, startTransition] = useTransition();
+  const [isPending] = useTransition();
 
   // Delayed search with useTransition
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -45,7 +45,7 @@ function SearchResults({ searchTerm }: { searchTerm: string }) {
     if (!searchTerm) return languages;
 
     return languages.filter((lang) =>
-      lang.toLowerCase().includes(searchTerm.toLowerCase())
+      lang.toLowerCase().includes(searchTerm.toLowerCase()),
     );
   }, [searchTerm]);
 
@@ -96,7 +96,7 @@ function LanguageItem({
         </span>
       ) : (
         part
-      )
+      ),
     );
   };
 
