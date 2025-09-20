@@ -47,9 +47,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      react-scan:
-        specifier: file:./react-scan-dist
-        version: react-scan-dist@file:react-scan-dist
       recharts:
         specifier: ^2.15.1
         version: 2.15.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -1906,9 +1903,6 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
-
-  react-scan-dist@file:react-scan-dist:
-    resolution: {directory: react-scan-dist, type: directory}
 
   react-smooth@4.0.4:
     resolution: {integrity: sha512-gnGKTpYwqL0Iii09gHobNolvX4Kiq4PKx6eWBCYYix+8cdw+cGo3do906l1NBPKkSWx1DghC1dlWG9L2uGd61Q==}
@@ -4122,8 +4116,6 @@ snapshots:
       use-sidecar: 1.1.3(@types/react@19.0.12)(react@19.0.0)
     optionalDependencies:
       '@types/react': 19.0.12
-
-  react-scan-dist@file:react-scan-dist: {}
 
   react-smooth@4.0.4(react-dom@19.0.0(react@19.0.0))(react@19.0.0):
     dependencies:
